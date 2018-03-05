@@ -6,8 +6,8 @@
 #include <boost/filesystem.hpp>
 #include <boost/range/iterator_range.hpp>
 #include <fmt/printf.h>
-#include "sqlite3/sqlite3.h"
 #include "RequestHandler.h"
+#include "sqlite3_wrapper/SQLDatabase.h"
 
 using json = nlohmann::json;
 
@@ -73,98 +73,83 @@ const json RequestHandler::parse_request(const std::string& req)
 
 std::unique_ptr<IResponse> RequestHandler::handle_query(const nlohmann::json& j)
 {
-    if(j.find("db") == j.end())
-    {
-        return std::make_unique<Response>(json{{"generic_error", NO_DATABASE_SPECIFIED}, {"request", j}});
-    }
+	if (j.find("db") == j.end())
+	{
+		return std::make_unique<Response>(json{ {"generic_error", NO_DATABASE_SPECIFIED}, {"request", j} });
+	}
 
-    const std::string database = j["db"];
-    const std::string query = j["query"];
+	const std::string database = j["db"];
+	const std::string query = j["query"];
 
-    const auto databasePath = std::string(databases_folder) + database;
-    sqlite3* db;
-    int rc = sqlite3_open(databasePath.c_str(), &db);
-    if(rc != SQLITE_OK)
-    {
-        return std::make_unique<Response>(json{{"error_code", sqlite3_errcode(db)}, {"error_message", sqlite3_errmsg(db)}, {"query", j}});
-    }
-    else
-    {
-        sqlite3_stmt* stmt;
-        do {
-            rc = sqlite3_prepare_v2(db, query.c_str(), (int)query.length(), &stmt, nullptr);
-        }while(rc == SQLITE_BUSY);
-        if(rc != SQLITE_OK)
-        {
-            return std::make_unique<Response>(json{{"error_code", sqlite3_errcode(db)}, {"error_message", sqlite3_errmsg(db)}, {"query", j}});
-        }
-        else
-        {
-            auto columnNames = json::array();
-            auto rowsData = json::array();
+	try
+	{
+		const auto databasePath = std::string(databases_folder) + database;
+		const auto database = std::make_unique<SQLDatabase>(databasePath);
+		const auto statement = database->prepare(query);
 
-            const auto columnCount = sqlite3_column_count(stmt);
-            for(auto i = 0;i < columnCount;++i)
-            {
-                columnNames.push_back(sqlite3_column_name(stmt, i));
-            }
+		auto columnNames = json::array();
+		auto rowsData = json::array();
 
-            while(sqlite3_step(stmt) == SQLITE_ROW)
-            {
-                auto rowData = json::object();
-                for(auto i = 0;i < columnCount;++i)
-                {
-                    const auto name = sqlite3_column_name(stmt, i);
-                    const auto type = sqlite3_column_type(stmt, i);
-                    const auto value = sqlite3_column_value(stmt, i);
-                    switch(type)
-                    {
-                        case SQLITE_INTEGER:
-                        {
-                            rowData[name] = sqlite3_value_int64(value);
-                        }break;
-                        case SQLITE_FLOAT:
-                        {
-                            rowData[name] = sqlite3_value_double(value);
-                        }break;
-                        case SQLITE_TEXT:
-                        {
-                            rowData[name] = (const char*)sqlite3_value_text(value);
-                        }break;
-                        case SQLITE_BLOB:
-                        {
-                            const auto hexStr = [](const char* data, const size_t len) -> std::string {
-                                constexpr char hexmap[] = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f'};
-                                std::string s(len * 2, ' ');
-                                for(size_t i = 0; i < len; ++i)
-                                {
-                                    s[2 * i] = hexmap[(data[i] & 0xF0) >> 4];
-                                    s[2 * i + 1] = hexmap[data[i] & 0x0F];
-                                }
-                                return s;
-                            };
+		const auto columnCount = statement->column_count();
+		for (auto i = 0; i < columnCount; ++i)
+		{
+			columnNames.push_back(statement->column_name(i));
+		}
 
-                            const auto blobSize = sqlite3_value_bytes(value);
-                            const auto blobValue = (const char*)sqlite3_value_blob(value);
-                            rowData[name] = "X'" + hexStr(blobValue, (size_t)blobSize) + "'";
-                        }break;
-                        case 0:
-                        case SQLITE_NULL:
-                        {
-                            rowData[name] = nullptr;
-                        }break;
-                    }
-                }
-                rowsData.push_back(rowData);
-            }
+		while (statement->next_row())
+		{
+			auto rowData = json::object();
+			for (auto i = 0; i < columnCount; ++i)
+			{
+				const auto name = statement->column_name(i);
+				const auto type = statement->column_type(i);
+				const auto value = statement->column_value(i);
+				switch (type)
+				{
+				case SQLITE_INTEGER:
+				{
+					rowData[name] = statement->value_int64(value);
+				}break;
+				case SQLITE_FLOAT:
+				{
+					rowData[name] = statement->value_double(value);
+				}break;
+				case SQLITE_TEXT:
+				{
+					rowData[name] = (const char*)statement->value_text(value);
+				}break;
+				case SQLITE_BLOB:
+				{
+					const auto hexStr = [](const char* data, const size_t len) -> std::string {
+						constexpr char hexmap[] = { '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f' };
+						std::string s(len * 2, ' ');
+						for (size_t i = 0; i < len; ++i)
+						{
+							s[2 * i] = hexmap[(data[i] & 0xF0) >> 4];
+							s[2 * i + 1] = hexmap[data[i] & 0x0F];
+						}
+						return s;
+					};
 
-            sqlite3_clear_bindings(stmt);
-            sqlite3_finalize(stmt);
-            sqlite3_close(db);
-
-            return std::make_unique<Response>(json{{"columns", columnNames}, {"data", rowsData}});
-        }
-    }
+					const auto blobSize = statement->value_bytes(value);
+					const auto blobValue = statement->value_blob(value);
+					rowData[name] = "X'" + hexStr(blobValue, (size_t)blobSize) + "'";
+				}break;
+				case 0:
+				case SQLITE_NULL:
+				{
+					rowData[name] = nullptr;
+				}break;
+				}
+			}
+			rowsData.push_back(rowData);
+		}
+		return std::make_unique<Response>(json{{"columns", columnNames}, {"data", rowsData}});
+	}
+	catch (const SQLException& e)
+	{
+		return std::make_unique<Response>(json{{"error_code", e.code()}, {"error_message", e.what()}, {"query", j}});
+	}
 }
 
 std::unique_ptr<IResponse> RequestHandler::handle_list(const nlohmann::json& j)

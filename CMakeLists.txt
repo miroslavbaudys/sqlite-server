@@ -33,7 +33,10 @@ add_executable(sqlite_server
         Response.cpp
         Response.h
 		IResponse.h
-		IRequestHandler.h)
+		IRequestHandler.h
+		sqlite3_wrapper/SQLDatabase.h
+		sqlite3_wrapper/SQLException.h
+		sqlite3_wrapper/SQLStatement.h)
 target_link_libraries(sqlite_server PUBLIC nlohmann_json fmt::fmt-header-only Boost::system Boost::regex Boost::filesystem Boost::thread)
 if(WIN32)
 	add_definitions(-DWIN32_LEAN_AND_MEAN)

@@ -16,6 +16,4 @@ Response::Response(const nlohmann::json& json)
     m_data.resize(sizeof(size) + size);
     memcpy(&m_data[0], &size, sizeof(size));
     memcpy(&m_data[sizeof(size)], response.data(), response.size());
-
-	fmt::print("Response: {}\n", response);
 }

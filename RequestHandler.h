@@ -18,7 +18,7 @@ public:
     RequestHandler();
 
 	//MARK: IRequestHandler
-    std::unique_ptr<IResponse> handle_request(const std::string& req);
+    std::unique_ptr<IResponse> handle_request(const std::string& req) override;
 
 private:
     const nlohmann::json parse_request(const std::string& req);

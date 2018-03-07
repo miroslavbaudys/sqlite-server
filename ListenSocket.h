@@ -11,9 +11,9 @@ template <class T>
 class ListenSocket final
 {
 public:
-    explicit ListenSocket(boost::asio::io_service& service, unsigned short listen_port) :
+    explicit ListenSocket(boost::asio::io_service& service, const boost::asio::ip::tcp::endpoint& listen_endpoint) :
             m_service(service),
-            m_acceptor(service, boost::asio::ip::tcp::endpoint(boost::asio::ip::tcp::v4(), listen_port)),
+            m_acceptor(service, listen_endpoint),
             m_socket(service)
     {
         do_accept();

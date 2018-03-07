@@ -11,7 +11,7 @@
 class SQLStatement final
 {
 public:
-	explicit SQLStatement(sqlite3* db, const std::string& query)
+	explicit SQLStatement(sqlite3* db, const std::string& query) throw(SQLException) : m_stmt(nullptr)
 	{
 		int rc;
 		do {
@@ -26,6 +26,7 @@ public:
 
 	~SQLStatement()
 	{
+		sqlite3_clear_bindings(m_stmt);
 		sqlite3_finalize(m_stmt);
 	}
 

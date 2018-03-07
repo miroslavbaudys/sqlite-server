@@ -7,6 +7,7 @@
 
 #include <vector>
 #include <nlohmann/json.hpp>
+#include <fmt/format.h>
 #include "IResponse.h"
 
 class Response final : public IResponse
@@ -20,6 +21,11 @@ public:
     inline const ResponseData& data() const override
     {
         return m_data;
+    }
+
+    inline const std::string data_repr() const override
+    {
+        return fmt::format("{}", std::string((const char*)&m_data[4], m_data.size() - 4));
     }
 
 private:

@@ -11,6 +11,7 @@
 class IRequestHandler
 {
 public:
+	virtual ~IRequestHandler() {}
 	virtual std::unique_ptr<IResponse> handle_request(const std::string&) = 0;
 };
 

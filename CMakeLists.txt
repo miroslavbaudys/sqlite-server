@@ -7,10 +7,18 @@ HunterGate(
 )
 
 project(sqlite_server)
-set(CMAKE_CXX_STANDARD 14)
 
-hunter_add_package(Boost COMPONENTS system regex filesystem thread)
-find_package(Boost CONFIG REQUIRED system regex filesystem thread)
+set(CMAKE_CXX_STANDARD 14)
+set(Boost_USE_MULTITHREADED ON)
+
+include(CheckIPOSupported)
+check_ipo_supported(RESULT ipo_supported OUTPUT error)
+if(ipo_supported)
+	set(CMAKE_INTERPROCEDURAL_OPTIMIZATION TRUE)
+endif()
+
+hunter_add_package(Boost COMPONENTS system regex filesystem thread program_options)
+find_package(Boost CONFIG REQUIRED system regex filesystem thread program_options)
 
 hunter_add_package(nlohmann_json)
 find_package(nlohmann_json CONFIG REQUIRED)
@@ -36,9 +44,38 @@ add_executable(sqlite_server
 		IRequestHandler.h
 		sqlite3_wrapper/SQLDatabase.h
 		sqlite3_wrapper/SQLException.h
-		sqlite3_wrapper/SQLStatement.h)
-target_link_libraries(sqlite_server PUBLIC nlohmann_json fmt::fmt-header-only Boost::system Boost::regex Boost::filesystem Boost::thread)
+		sqlite3_wrapper/SQLStatement.h
+		Config.cpp
+		Config.h
+        Logger.h)
+target_link_libraries(sqlite_server PUBLIC
+		nlohmann_json
+		fmt::fmt-header-only
+		Boost::system
+		Boost::regex
+		Boost::filesystem
+		Boost::thread
+		Boost::program_options
+		${CMAKE_DL_LIBS})
 if(WIN32)
 	add_definitions(-DWIN32_LEAN_AND_MEAN)
     target_link_libraries(sqlite_server PUBLIC wsock32 ws2_32)
 endif()
+
+# Get the current working branch
+execute_process(
+    COMMAND git rev-parse --abbrev-ref HEAD
+	WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+	OUTPUT_VARIABLE GITHUB_BRANCH
+	OUTPUT_STRIP_TRAILING_WHITESPACE
+)
+
+# Get the latest abbreviated commit hash of the working branch
+execute_process(
+	COMMAND git log -1 --format=%h
+	WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+	OUTPUT_VARIABLE GITHUB_COMMIT_HASH
+	OUTPUT_STRIP_TRAILING_WHITESPACE
+)
+add_definitions("-DSQLITE_SERVER_GIT_COMMIT_HASH=\"${GITHUB_COMMIT_HASH}\"")
+add_definitions("-DSQLITE_SERVER_GIT_BRANCH=\"${GITHUB_BRANCH}\"")

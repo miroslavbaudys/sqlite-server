@@ -6,11 +6,12 @@
 #define SQLITE_SERVER_SQLEXCEPTION_H
 
 #include <string>
+#include <utility>
 
 class SQLException final
 {
 public:
-	explicit SQLException(const int code, const std::string& what) : m_code(code), m_what(what)
+	explicit SQLException(const int code, std::string what) : m_code(code), m_what(std::move(what))
 	{
 	}
 

@@ -6,13 +6,11 @@
 #include <boost/filesystem.hpp>
 #include <boost/range/iterator_range.hpp>
 #include <fmt/printf.h>
-#include "RequestHandler.h"
 #include "sqlite3_wrapper/SQLDatabase.h"
+#include "Config.h"
+#include "RequestHandler.h"
 
 using json = nlohmann::json;
-
-//TODO: config
-const auto databases_folder = "C:\\Users\\Mira\\Documents\\";
 
 enum GenericErrorCode
 {
@@ -34,8 +32,6 @@ RequestHandler::RequestHandler() :
 
 std::unique_ptr<IResponse> RequestHandler::handle_request(const std::string& req)
 {
-	fmt::print("Request: {}\n", req);
-
     json j;
     try {
         j = parse_request(req);
@@ -61,7 +57,7 @@ const json RequestHandler::parse_request(const std::string& req)
     json j;
     try {
         j = json::parse(req);
-    }catch(nlohmann::detail::parse_error&) {
+    }catch(const nlohmann::detail::parse_error&) {
         //fix JSON - there is error in SQLiteStudio {cmd:"LIST"}
         std::string result;
         boost::regex e("(['\"])?([a-zA-Z0-9]+)(['\"])?:");
@@ -75,16 +71,16 @@ std::unique_ptr<IResponse> RequestHandler::handle_query(const nlohmann::json& j)
 {
 	if (j.find("db") == j.end())
 	{
-		return std::make_unique<Response>(json{ {"generic_error", NO_DATABASE_SPECIFIED}, {"request", j} });
+		return std::make_unique<Response>(json{{"generic_error", NO_DATABASE_SPECIFIED}, {"request", j}});
 	}
 
-	const std::string database = j["db"];
+	const std::string database_name = j["db"];
 	const std::string query = j["query"];
 
 	try
 	{
-		const auto databasePath = std::string(databases_folder) + database;
-		const auto database = std::make_unique<SQLDatabase>(databasePath);
+        const auto database_path = Config::instance().databases_folder / database_name;
+		const auto database = std::make_unique<SQLDatabase>(database_path.string());
 		const auto statement = database->prepare(query);
 
 		auto columnNames = json::array();
@@ -123,7 +119,7 @@ std::unique_ptr<IResponse> RequestHandler::handle_query(const nlohmann::json& j)
 					const auto hexStr = [](const char* data, const size_t len) -> std::string {
 						constexpr char hexmap[] = { '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f' };
 						std::string s(len * 2, ' ');
-						for (size_t i = 0; i < len; ++i)
+						for (auto i = 0; i < len; ++i)
 						{
 							s[2 * i] = hexmap[(data[i] & 0xF0) >> 4];
 							s[2 * i + 1] = hexmap[data[i] & 0x0F];
@@ -155,10 +151,9 @@ std::unique_ptr<IResponse> RequestHandler::handle_query(const nlohmann::json& j)
 std::unique_ptr<IResponse> RequestHandler::handle_list(const nlohmann::json& j)
 {
     auto databases = json::array();
-    if(boost::filesystem::is_directory(databases_folder))
+    if(boost::filesystem::is_directory(Config::instance().databases_folder))
     {
-        boost::filesystem::directory_iterator it{databases_folder};
-        for(boost::filesystem::directory_iterator itr{databases_folder};itr != boost::filesystem::directory_iterator{};++itr)
+        for(boost::filesystem::directory_iterator itr{Config::instance().databases_folder};itr != boost::filesystem::directory_iterator{};++itr)
         {
             if(boost::filesystem::is_regular_file(*itr))
             {
@@ -176,8 +171,8 @@ std::unique_ptr<IResponse> RequestHandler::handle_delete_db(const nlohmann::json
         return std::make_unique<Response>(json{{"generic_error", NO_DATABASE_SPECIFIED}, {"request", j}});
     }
 
-    const std::string database = j["db"];
-    const auto databasePath = std::string(databases_folder) + database;
-    const auto result = boost::filesystem::remove(databasePath);
+    const std::string database_name = j["db"];
+    const auto database_path = Config::instance().databases_folder / database_name;
+    const auto result = boost::filesystem::remove(database_path);
 	return std::make_unique<Response>(json{{"result", result ? "ok" : "error"}});
 }

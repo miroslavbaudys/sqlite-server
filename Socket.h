@@ -16,7 +16,7 @@ public:
 		m_socket(std::move(socket))
     {
     }
-    
+	virtual ~Socket() {}
     virtual void do_read() = 0;
     
 protected:

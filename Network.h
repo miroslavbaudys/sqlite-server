@@ -14,17 +14,17 @@ template<class T>
 class NetworkWorker final
 {
 public:
-    explicit NetworkWorker(const uint16_t listen_port, const uint16_t threads = 1) :
-            m_listen_port(listen_port),
-            m_threads(threads)
+    explicit NetworkWorker(const boost::asio::ip::tcp::endpoint& listen_endpoint, const uint16_t workers = 1) :
+            m_listen_endpoint(listen_endpoint),
+            m_workers(workers)
     {
     }
     
     void run()
     {
-        ListenSocket<T> listenSocket(m_service, m_listen_port);
+        ListenSocket<T> listenSocket(m_service, m_listen_endpoint);
         boost::thread_group thread_pool;
-        for(uint16_t i = 0;i < m_threads;++i)
+        for(uint16_t i = 0;i < m_workers;++i)
         {
             thread_pool.create_thread(boost::bind(&boost::asio::io_service::run, &m_service));
         }
@@ -37,9 +37,9 @@ public:
     }
     
 private:
-    boost::asio::io_service m_service;
-    const uint16_t          m_listen_port;
-    const uint16_t          m_threads;
+    boost::asio::io_service         m_service;
+    boost::asio::ip::tcp::endpoint  m_listen_endpoint;
+    const uint16_t                  m_workers;
 };
 
 #endif /* SQLITE_SERVER_NETWORK_H */

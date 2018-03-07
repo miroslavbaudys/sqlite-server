@@ -8,10 +8,12 @@
 class IResponse
 {
 protected:
-	using ResponseData = std::vector<uint8_t>;
+    using ResponseData = std::vector<uint8_t>;
 
 public:
-	virtual const ResponseData& data() const = 0;
+	virtual ~IResponse() {}
+    virtual const ResponseData& data() const = 0;
+    virtual const std::string data_repr() const { return ""; };
 };
 
 #endif

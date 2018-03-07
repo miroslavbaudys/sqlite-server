@@ -9,6 +9,7 @@
 #include <nlohmann/json.hpp>
 #include <boost/bind.hpp>
 #include <boost/function.hpp>
+#include "sqlite3_wrapper/SQLDatabase.h"
 #include "Response.h"
 #include "IRequestHandler.h"
 
@@ -28,8 +29,12 @@ private:
     std::unique_ptr<IResponse> handle_list(const nlohmann::json& j);
     std::unique_ptr<IResponse> handle_delete_db(const nlohmann::json& j);
 
+	//database conections
+	std::shared_ptr<SQLDatabase> get_database_connection(const std::string& database_name);
+
 private:
     const std::map<std::string, boost::function<std::unique_ptr<IResponse>(const nlohmann::json&)>> m_map;
+	std::map<std::string, std::shared_ptr<SQLDatabase>> m_databases;
 };
 
 

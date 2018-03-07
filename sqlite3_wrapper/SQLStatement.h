@@ -11,7 +11,7 @@
 class SQLStatement final
 {
 public:
-	explicit SQLStatement(sqlite3* db, const std::string& query) throw(SQLException) : m_stmt(nullptr)
+	explicit SQLStatement(sqlite3* db, const std::string& query) : m_stmt(nullptr)
 	{
 		int rc;
 		do {

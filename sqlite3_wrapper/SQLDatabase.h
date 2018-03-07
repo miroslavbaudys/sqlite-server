@@ -13,7 +13,7 @@
 class SQLDatabase final
 {
 public:
-	explicit SQLDatabase(const std::string& path) throw(SQLException) : m_db(nullptr)
+	explicit SQLDatabase(const std::string& path) : m_db(nullptr)
 	{
 		const auto rc = sqlite3_open(path.c_str(), &m_db);
 		if (rc != SQLITE_OK)
@@ -27,7 +27,7 @@ public:
 		sqlite3_close(m_db);
 	}
 
-	inline auto prepare(const std::string& query) const throw(SQLException)
+	inline auto prepare(const std::string& query) const
 	{
 		return std::make_unique<SQLStatement>(m_db, query);
 	}

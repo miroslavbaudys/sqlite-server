@@ -42,7 +42,7 @@ auto get_config_value(const json& j, const std::string& key)
     return j[key];
 }
 
-void Config::init(const boost::program_options::variables_map& vm) throw(ConfigException)
+void Config::init(const boost::program_options::variables_map& vm)
 {
     //load from config if specified or use cmd line arguments
     const auto config = vm.find("config");

@@ -6,7 +6,6 @@
 #include <boost/filesystem.hpp>
 #include <boost/range/iterator_range.hpp>
 #include <fmt/printf.h>
-#include "sqlite3_wrapper/SQLDatabase.h"
 #include "Config.h"
 #include "RequestHandler.h"
 
@@ -79,8 +78,7 @@ std::unique_ptr<IResponse> RequestHandler::handle_query(const nlohmann::json& j)
 
 	try
 	{
-        const auto database_path = Config::instance().databases_folder / database_name;
-		const auto database = std::make_unique<SQLDatabase>(database_path.string());
+		const auto database = get_database_connection(database_name);
 		const auto statement = database->prepare(query);
 
 		auto columnNames = json::array();
@@ -175,4 +173,19 @@ std::unique_ptr<IResponse> RequestHandler::handle_delete_db(const nlohmann::json
     const auto database_path = Config::instance().databases_folder / database_name;
     const auto result = boost::filesystem::remove(database_path);
 	return std::make_unique<Response>(json{{"result", result ? "ok" : "error"}});
+}
+
+//database conections
+std::shared_ptr<SQLDatabase> RequestHandler::get_database_connection(const std::string& database_name)
+{
+	const auto db_itr = m_databases.find(database_name);
+	if (db_itr != m_databases.end())
+	{
+		return db_itr->second;
+	}
+
+	const auto database_path = Config::instance().databases_folder / database_name;
+	const auto database = std::make_shared<SQLDatabase>(database_path.string());
+	m_databases.emplace(database_name, database);
+	return database;
 }

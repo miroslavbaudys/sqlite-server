@@ -32,7 +32,7 @@ public:
         return config;
     }
 
-    void init(const boost::program_options::variables_map& vm) throw(ConfigException);
+    void init(const boost::program_options::variables_map& vm);
 
     friend std::ostream &operator<<(std::ostream &os, const Config &c)
     {

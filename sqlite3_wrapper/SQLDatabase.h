@@ -8,7 +8,6 @@
 #include <memory>
 #include "SQLException.h"
 #include "SQLStatement.h"
-#include "../sqlite3/sqlite3.h"
 
 class SQLDatabase final
 {

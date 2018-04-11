@@ -5,8 +5,8 @@
 #ifndef SQLITE_SERVER_SQLSTATEMENT_H
 #define SQLITE_SERVER_SQLSTATEMENT_H
 
+#include <sqlite3.h>
 #include "SQLException.h"
-#include "../sqlite3/sqlite3.h"
 
 class SQLStatement final
 {

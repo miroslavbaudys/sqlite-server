@@ -9,12 +9,13 @@
 #include "Socket.h"
 #include "IRequestHandler.h"
 
-class SQLiteSocket final : public Socket
+class SQLiteSocket final : public Socket, public std::enable_shared_from_this<SQLiteSocket>
 {
     using OutPackets = std::queue<std::unique_ptr<IResponse>>;
 
 public:
     explicit SQLiteSocket(boost::asio::io_service& service, boost::asio::ip::tcp::socket socket);
+    ~SQLiteSocket() override;
 
     //MARK: Socket
     void do_read() override;

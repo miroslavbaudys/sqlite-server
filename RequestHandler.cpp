@@ -19,7 +19,7 @@ enum GenericErrorCode
     NO_DATABASE_SPECIFIED
 };
 
-RequestHandler::RequestHandler() : 
+RequestHandler::RequestHandler() :
 	m_map{
 		{"QUERY", boost::bind(&RequestHandler::handle_query, this, _1)},
 		{"LIST", boost::bind(&RequestHandler::handle_list, this, _1)},

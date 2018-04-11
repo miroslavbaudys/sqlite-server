@@ -8,15 +8,12 @@
 #include <memory>
 #include <boost/asio.hpp>
 
-class Socket : public std::enable_shared_from_this<Socket>
+class Socket
 {
 public:
-    explicit Socket(boost::asio::io_service& service, boost::asio::ip::tcp::socket socket) :
-		m_service(service),
-		m_socket(std::move(socket))
-    {
-    }
-	virtual ~Socket() {}
+    explicit Socket(boost::asio::io_service& service, boost::asio::ip::tcp::socket socket);
+	virtual ~Socket();
+
     virtual void do_read() = 0;
     
 protected:

@@ -14,7 +14,12 @@ SQLiteSocket::SQLiteSocket(boost::asio::io_service& service,
 	m_packet_size(0),
 	m_handler(std::make_unique<RequestHandler>())
 {
+    Log.debug("SQLiteSocket create\n");
+}
 
+SQLiteSocket::~SQLiteSocket()
+{
+    Log.debug("SQLiteSocket destroy\n");
 }
 
 void SQLiteSocket::do_read()
@@ -38,8 +43,8 @@ void SQLiteSocket::do_read()
             boost::asio::async_read(m_socket, boost::asio::buffer(m_request), [this, self](boost::system::error_code ec, std::size_t length) {
                 if(!ec)
                 {
-                    Log.debug("Request - {}\n", m_request);
-                    send_response(std::move(m_handler->handle_request(m_request)));
+                    Log.debug("{:<10}{}\n", "REQUEST:", m_request);
+                    send_response(m_handler->handle_request(m_request));
                     do_read();
                 }
             });
@@ -49,7 +54,7 @@ void SQLiteSocket::do_read()
 
 void SQLiteSocket::send_response(std::unique_ptr<IResponse> response)
 {
-    Log.debug("Response - {}\n", response->data_repr());
+    Log.debug("{:<10}{}\n", "RESPONSE:", response->data_repr());
     const auto write_in_progress = !m_out_packets.empty();
     m_out_packets.push(std::move(response));
     if(!write_in_progress)

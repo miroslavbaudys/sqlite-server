@@ -7,6 +7,9 @@
 
 #include <fmt/format.h>
 
+/*
+ * 11:48:17 [level] [source]: [message]
+ */
 class Logger final
 {
 private:
@@ -22,22 +25,35 @@ public:
     template <typename... Args>
     void debug(const char *format, const Args & ... args)
     {
-        fmt::print("Debug: ");
+        fmt::print("{} [DEBUG] ", get_formatted_time());
         fmt::print(format, args...);
     }
 
     template <typename... Args>
     void warning(const char *format, const Args & ... args)
     {
-        fmt::print("Warning: ");
+        fmt::print("{} [WARNING] ", get_formatted_time());
         fmt::print(format, args...);
     }
 
     template <typename... Args>
     void error(const char *format, const Args & ... args)
     {
-        fmt::print("Error: ");
+        fmt::print("{} [ERROR] ", get_formatted_time());
         fmt::print(format, args...);
+    }
+
+private:
+    inline const std::string get_formatted_time() const
+    {
+        time_t unixtime;
+        struct tm time_info;
+        char buff[32];
+
+        time(&unixtime);
+        localtime_r(&unixtime, &time_info);
+        strftime(buff, sizeof(buff), "%Y-%m-%d %H:%M:%S", &time_info);
+        return std::string(buff);
     }
 };
 

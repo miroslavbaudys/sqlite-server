@@ -24,7 +24,7 @@ public:
     {
         ListenSocket<T> listenSocket(m_service, m_listen_endpoint);
         boost::thread_group thread_pool;
-        for(uint16_t i = 0;i < m_workers;++i)
+        for(auto i = 0;i < m_workers;++i)
         {
             thread_pool.create_thread(boost::bind(&boost::asio::io_service::run, &m_service));
         }

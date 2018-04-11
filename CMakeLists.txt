@@ -2,11 +2,11 @@ cmake_minimum_required(VERSION 3.9)
 
 include("cmake/HunterGate.cmake")
 HunterGate(
-        URL "https://github.com/ruslo/hunter/archive/v0.20.13.tar.gz"
-        SHA1 "d92042d6e22522516183b86da10e56fb1af73f7a"
+        URL "https://github.com/ruslo/hunter/archive/v0.20.19.tar.gz"
+        SHA1 "f22d712b57ed3b89e661a7ef311814aa3c424a66"
 )
 
-project(sqlite_server)
+project(sqlite3-server)
 
 set(CMAKE_CXX_STANDARD 14)
 set(Boost_USE_MULTITHREADED ON)
@@ -17,25 +17,43 @@ if(ipo_supported)
 	set(CMAKE_INTERPROCEDURAL_OPTIMIZATION TRUE)
 endif()
 
+# Boost
 hunter_add_package(Boost COMPONENTS system regex filesystem thread program_options)
 find_package(Boost CONFIG REQUIRED system regex filesystem thread program_options)
 
+# JSON parser
 hunter_add_package(nlohmann_json)
 find_package(nlohmann_json CONFIG REQUIRED)
 
+# fmt lib
 hunter_add_package(fmt)
 find_package(fmt CONFIG REQUIRED)
 
-add_executable(sqlite_server
-        main.cpp
-        ListenSocket.h
-        Network.h
-        Socket.h
-        SQLiteSocket.cpp
-        SQLiteSocket.h
+# sqlite3 compile options
+# https://sqlite.org/compile.html
+add_definitions(
+        -DSQLITE_THREADSAFE=1
+        -DSQLITE_DEFAULT_MEMSTATUS=0
+        -DSQLITE_DEFAULT_WAL_SYNCHRONOUS=1
+        -DSQLITE_LIKE_DOESNT_MATCH_BLOBS
+        -DSQLITE_MAX_EXPR_DEPTH=0
+        -DSQLITE_OMIT_DECLTYPE
+        -DSQLITE_OMIT_DEPRECATED
+        -DSQLITE_OMIT_PROGRESS_CALLBACK
+        -DSQLITE_OMIT_SHARED_CACHE
+        -DSQLITE_USE_ALLOCA)
+
+add_executable(sqlite3-server
         sqlite3/sqlite3.c
         sqlite3/sqlite3.h
         sqlite3/sqlite3ext.h
+        main.cpp
+        ListenSocket.h
+        Network.h
+		Socket.cpp
+        Socket.h
+        SQLiteSocket.cpp
+        SQLiteSocket.h
         RequestHandler.cpp
         RequestHandler.h
         Response.cpp
@@ -48,18 +66,18 @@ add_executable(sqlite_server
 		Config.cpp
 		Config.h
         Logger.h)
-target_link_libraries(sqlite_server PUBLIC
-		nlohmann_json
-		fmt::fmt-header-only
+target_link_libraries(sqlite3-server PUBLIC
 		Boost::system
 		Boost::regex
 		Boost::filesystem
 		Boost::thread
 		Boost::program_options
+        nlohmann_json
+        fmt::fmt-header-only
 		${CMAKE_DL_LIBS})
 if(WIN32)
 	add_definitions(-DWIN32_LEAN_AND_MEAN)
-    target_link_libraries(sqlite_server PUBLIC wsock32 ws2_32)
+    target_link_libraries(sqlite3-server PUBLIC wsock32 ws2_32)
 endif()
 
 # Get the current working branch

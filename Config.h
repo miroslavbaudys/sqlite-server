@@ -10,11 +10,12 @@
 #include <boost/asio.hpp>
 #include <nlohmann/json.hpp>
 
-class ConfigException final
+class ConfigException final : public std::exception
 {
 public:
     explicit ConfigException(std::string what) : m_what(std::move(what)) {}
-    inline const auto what() const { return m_what; }
+
+    inline const char* what() const noexcept override { return m_what.c_str(); }
 
 private:
     const std::string m_what;

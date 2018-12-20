@@ -51,7 +51,7 @@ std::unique_ptr<IResponse> RequestHandler::handle_request(const std::string& req
     return handler->second(j);
 }
 
-const json RequestHandler::parse_request(const std::string& req)
+const json RequestHandler::parse_request(const std::string& req) const
 {
     json j;
     try {

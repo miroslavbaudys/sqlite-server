@@ -47,7 +47,7 @@ private:
     inline const std::string get_formatted_time() const
     {
         time_t unixtime;
-        struct tm time_info;
+        struct tm time_info{};
         char buff[32];
 
         time(&unixtime);

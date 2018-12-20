@@ -22,7 +22,7 @@ public:
     std::unique_ptr<IResponse> handle_request(const std::string& req) override;
 
 private:
-    const nlohmann::json parse_request(const std::string& req);
+    const nlohmann::json parse_request(const std::string& req) const;
 
     //handlers
     std::unique_ptr<IResponse> handle_query(const nlohmann::json& j);

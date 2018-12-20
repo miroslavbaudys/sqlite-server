@@ -11,9 +11,9 @@ protected:
     using ResponseData = std::vector<uint8_t>;
 
 public:
-	virtual ~IResponse() {}
-    virtual const ResponseData& data() const = 0;
-    virtual const std::string data_repr() const { return ""; };
+	virtual ~IResponse() = default;
+    virtual const ResponseData& data() const noexcept = 0;
+    virtual const std::string data_repr() const noexcept { return ""; };
 };
 
 #endif

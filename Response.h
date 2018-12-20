@@ -18,12 +18,12 @@ public:
     explicit Response(const nlohmann::json& json);
 
 	//MARK: IResponse
-    inline const ResponseData& data() const override
+    inline const ResponseData& data() const noexcept override
     {
         return m_data;
     }
 
-    inline const std::string data_repr() const override
+    inline const std::string data_repr() const noexcept override
     {
         return fmt::format("{}", std::string((const char*)&m_data[4], m_data.size() - 4));
     }

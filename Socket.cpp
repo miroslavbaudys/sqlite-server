@@ -5,14 +5,12 @@
 #include "Socket.h"
 #include "Logger.h"
 
-Socket::Socket(boost::asio::io_service& service, boost::asio::ip::tcp::socket socket) :
+Socket::Socket(boost::asio::io_context &service, boost::asio::ip::tcp::socket socket) :
         m_service(service),
-        m_socket(std::move(socket))
-{
-    Log.debug("Socket create\n");
+        m_socket(std::move(socket)) {
+    LogDebug("Socket create\n");
 }
 
-Socket::~Socket()
-{
-    Log.debug("Socket destroy\n");
+Socket::~Socket() {
+    LogDebug("Socket destroy\n");
 }

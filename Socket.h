@@ -8,17 +8,17 @@
 #include <memory>
 #include <boost/asio.hpp>
 
-class Socket
-{
+class Socket {
 public:
-    explicit Socket(boost::asio::io_service& service, boost::asio::ip::tcp::socket socket);
-	virtual ~Socket();
+    explicit Socket(boost::asio::io_context &service, boost::asio::ip::tcp::socket socket);
+
+    virtual ~Socket();
 
     virtual void do_read() = 0;
-    
+
 protected:
-    boost::asio::io_service&       m_service;
-    boost::asio::ip::tcp::socket   m_socket;
+    boost::asio::io_context &m_service;
+    boost::asio::ip::tcp::socket m_socket;
 };
 
 #endif /* SQLITE_SERVER_SOCKET_H */

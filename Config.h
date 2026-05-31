@@ -9,34 +9,31 @@
 #include <boost/filesystem.hpp>
 #include <boost/asio.hpp>
 #include <nlohmann/json.hpp>
+#include <fmt/ostream.h>
 
-class ConfigException final : public std::exception
-{
+class ConfigException final : public std::exception {
 public:
     explicit ConfigException(std::string what) : m_what(std::move(what)) {}
 
-    inline const char* what() const noexcept override { return m_what.c_str(); }
+    inline const char *what() const noexcept override { return m_what.c_str(); }
 
 private:
     const std::string m_what;
 };
 
-class Config final
-{
+class Config final {
 private:
     Config() = default;
 
 public:
-    static Config& instance()
-    {
+    static Config &instance() {
         static Config config;
         return config;
     }
 
-    void init(const boost::program_options::variables_map& vm);
+    void init(const boost::program_options::variables_map &vm);
 
-    friend std::ostream &operator<<(std::ostream &os, const Config &c)
-    {
+    friend std::ostream &operator<<(std::ostream &os, const Config &c) {
         return os
                 << "\tListen IP:                " << c.listen_endpoint.address().to_string() << std::endl
                 << "\tListen port:              " << c.listen_endpoint.port() << std::endl
@@ -49,6 +46,10 @@ public:
     uint16_t workers;
     boost::asio::ip::tcp::endpoint listen_endpoint;
     boost::filesystem::path databases_folder;
+};
+
+template<>
+struct fmt::formatter<Config> : ostream_formatter {
 };
 
 #endif //SQLITE_SERVER_CONFIG_H

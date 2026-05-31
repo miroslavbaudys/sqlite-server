@@ -7,34 +7,32 @@
 
 #include <string>
 #include <nlohmann/json.hpp>
-#include <boost/bind.hpp>
-#include <boost/function.hpp>
 #include "sqlite3_wrapper/SQLDatabase.h"
 #include "Response.h"
 #include "IRequestHandler.h"
 
-class RequestHandler final : public IRequestHandler
-{
+class RequestHandler final : public IRequestHandler {
 public:
-    RequestHandler();
+    RequestHandler() = default;
 
-	//MARK: IRequestHandler
-    std::unique_ptr<IResponse> handle_request(const std::string& req) override;
+    //MARK: IRequestHandler
+    std::unique_ptr<IResponse> handle_request(const std::string &req) override;
 
 private:
-    const nlohmann::json parse_request(const std::string& req) const;
+    nlohmann::json parse_request(const std::string &req) const;
 
     //handlers
-    std::unique_ptr<IResponse> handle_query(const nlohmann::json& j);
-    std::unique_ptr<IResponse> handle_list(const nlohmann::json& j);
-    std::unique_ptr<IResponse> handle_delete_db(const nlohmann::json& j);
+    std::unique_ptr<IResponse> handle_query(const nlohmann::json &j);
 
-	//database conections
-	std::shared_ptr<SQLDatabase> get_database_connection(const std::string& database_name);
+    std::unique_ptr<IResponse> handle_list(const nlohmann::json &j);
+
+    std::unique_ptr<IResponse> handle_delete_db(const nlohmann::json &j);
+
+    //database connections
+    std::shared_ptr<SQLDatabase> get_database_connection(const std::string &database_name);
 
 private:
-    const std::map<std::string, boost::function<std::unique_ptr<IResponse>(const nlohmann::json&)>> m_map;
-	std::map<std::string, std::shared_ptr<SQLDatabase>> m_databases;
+    std::map<std::string, std::shared_ptr<SQLDatabase>> m_databases;
 };
 
 

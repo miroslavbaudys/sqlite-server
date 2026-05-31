@@ -8,11 +8,11 @@
 #include <string>
 #include "IResponse.h"
 
-class IRequestHandler
-{
+class IRequestHandler {
 public:
-	virtual ~IRequestHandler() = default;
-	virtual std::unique_ptr<IResponse> handle_request(const std::string&) = 0;
+    virtual ~IRequestHandler() = default;
+
+    virtual std::unique_ptr<IResponse> handle_request(const std::string &) = 0;
 };
 
 #endif

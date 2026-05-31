@@ -9,30 +9,25 @@
 #include "SQLException.h"
 #include "SQLStatement.h"
 
-class SQLDatabase final
-{
+class SQLDatabase final {
 public:
-	explicit SQLDatabase(const std::string& path) : m_db(nullptr)
-	{
-		const auto rc = sqlite3_open(path.c_str(), &m_db);
-		if (rc != SQLITE_OK)
-		{
-			throw SQLException(sqlite3_errcode(m_db), sqlite3_errmsg(m_db));
-		}
-	}
+    explicit SQLDatabase(const std::string &path) : m_db(nullptr) {
+        const auto rc = sqlite3_open(path.c_str(), &m_db);
+        if (rc != SQLITE_OK) {
+            throw SQLException(sqlite3_errcode(m_db), sqlite3_errmsg(m_db));
+        }
+    }
 
-	~SQLDatabase()
-	{
-		sqlite3_close(m_db);
-	}
+    ~SQLDatabase() {
+        sqlite3_close(m_db);
+    }
 
-	inline auto prepare(const std::string& query) const
-	{
-		return std::make_unique<SQLStatement>(m_db, query);
-	}
+    inline auto prepare(const std::string &query) const {
+        return std::make_unique<SQLStatement>(m_db, query);
+    }
 
 private:
-	sqlite3* m_db;
+    sqlite3 *m_db;
 };
 
 #endif

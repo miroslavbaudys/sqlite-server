@@ -10,22 +10,19 @@
 #include <fmt/format.h>
 #include "IResponse.h"
 
-class Response final : public IResponse
-{
+class Response final : public IResponse {
     using HeaderSize = uint32_t;
 
 public:
-    explicit Response(const nlohmann::json& json);
+    explicit Response(const nlohmann::json &json);
 
-	//MARK: IResponse
-    inline const ResponseData& data() const noexcept override
-    {
+    //MARK: IResponse
+    inline const ResponseData &data() const noexcept override {
         return m_data;
     }
 
-    inline const std::string data_repr() const noexcept override
-    {
-        return fmt::format("{}", std::string((const char*)&m_data[4], m_data.size() - 4));
+    inline std::string data_repr() const noexcept override {
+        return fmt::format("{}", std::string((const char *) &m_data[4], m_data.size() - 4));
     }
 
 private:

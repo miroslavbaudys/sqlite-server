@@ -1,46 +1,53 @@
-cmake_minimum_required(VERSION 3.9)
+cmake_minimum_required(VERSION 3.11)
 
-include("cmake/HunterGate.cmake")
-HunterGate(
-        URL "https://github.com/ruslo/hunter/archive/v0.23.80.tar.gz"
-        SHA1 "3bfa8be33ac3bdac570312ca1ece33059cc71c20"
-)
+include(FetchContent)
 project(sqlite3-server)
 
 set(CMAKE_CXX_STANDARD 14)
-set(Boost_USE_MULTITHREADED ON)
 
 include(CheckIPOSupported)
 check_ipo_supported(RESULT ipo_supported OUTPUT error)
-if (ipo_supported)
-    set(CMAKE_INTERPROCEDURAL_OPTIMIZATION TRUE)
-endif ()
 
 # Boost
-hunter_add_package(Boost COMPONENTS system regex filesystem thread program_options)
-find_package(Boost CONFIG REQUIRED system regex filesystem thread program_options)
+set(Boost_USE_MULTITHREADED ON)
+set(BOOST_INCLUDE_LIBRARIES asio system regex filesystem thread program_options)
+set(BOOST_ENABLE_CMAKE ON)
+FetchContent_Declare(
+        Boost
+        GIT_REPOSITORY https://github.com/boostorg/boost
+        GIT_TAG boost-1.91.0-1
+)
+FetchContent_MakeAvailable(Boost)
 
 # JSON parser
-hunter_add_package(nlohmann_json)
-find_package(nlohmann_json CONFIG REQUIRED)
+FetchContent_Declare(
+        json
+        GIT_REPOSITORY https://github.com/nlohmann/json
+        GIT_TAG v3.12.0
+)
+FetchContent_MakeAvailable(json)
 
 # fmt lib
-hunter_add_package(fmt)
-find_package(fmt CONFIG REQUIRED)
+FetchContent_Declare(
+        fmt
+        GIT_REPOSITORY https://github.com/fmtlib/fmt
+        GIT_TAG 12.1.0
+)
+FetchContent_MakeAvailable(fmt)
 
 # sqlite3 compile options
 # https://sqlite.org/compile.html
-add_definitions(
-        -DSQLITE_THREADSAFE=1
-        -DSQLITE_DEFAULT_MEMSTATUS=0
-        -DSQLITE_DEFAULT_WAL_SYNCHRONOUS=1
-        -DSQLITE_LIKE_DOESNT_MATCH_BLOBS
-        -DSQLITE_MAX_EXPR_DEPTH=0
-        -DSQLITE_OMIT_DECLTYPE
-        -DSQLITE_OMIT_DEPRECATED
-        -DSQLITE_OMIT_PROGRESS_CALLBACK
-        -DSQLITE_OMIT_SHARED_CACHE
-        -DSQLITE_USE_ALLOCA)
+set(SQLITE_COMPILE_OPTIONS
+        SQLITE_THREADSAFE=1
+        SQLITE_DEFAULT_MEMSTATUS=0
+        SQLITE_DEFAULT_WAL_SYNCHRONOUS=1
+        SQLITE_LIKE_DOESNT_MATCH_BLOBS
+        SQLITE_MAX_EXPR_DEPTH=0
+        SQLITE_OMIT_DECLTYPE
+        SQLITE_OMIT_DEPRECATED
+        SQLITE_OMIT_PROGRESS_CALLBACK
+        SQLITE_OMIT_SHARED_CACHE
+        SQLITE_USE_ALLOCA)
 
 add_executable(sqlite3-server
         sqlite3/sqlite3.c
@@ -65,7 +72,15 @@ add_executable(sqlite3-server
         Config.cpp
         Config.h
         Logger.h)
-target_link_libraries(sqlite3-server PUBLIC
+
+if (ipo_supported)
+    set_target_properties(sqlite3-server PROPERTIES INTERPROCEDURAL_OPTIMIZATION TRUE)
+endif ()
+
+target_compile_definitions(sqlite3-server PRIVATE ${SQLITE_COMPILE_OPTIONS})
+
+target_link_libraries(sqlite3-server PRIVATE
+        Boost::asio
         Boost::system
         Boost::regex
         Boost::filesystem
@@ -74,9 +89,10 @@ target_link_libraries(sqlite3-server PUBLIC
         nlohmann_json::nlohmann_json
         fmt::fmt-header-only
         ${CMAKE_DL_LIBS})
+
 if (WIN32)
-    add_definitions(-DWIN32_LEAN_AND_MEAN)
-    target_link_libraries(sqlite3-server PUBLIC wsock32 ws2_32)
+    target_compile_definitions(sqlite3-server PRIVATE WIN32_LEAN_AND_MEAN)
+    target_link_libraries(sqlite3-server PRIVATE wsock32 ws2_32)
 endif ()
 
 # Get the current working branch
@@ -94,5 +110,6 @@ execute_process(
         OUTPUT_VARIABLE GITHUB_COMMIT_HASH
         OUTPUT_STRIP_TRAILING_WHITESPACE
 )
-add_definitions("-DSQLITE_SERVER_GIT_COMMIT_HASH=\"${GITHUB_COMMIT_HASH}\"")
-add_definitions("-DSQLITE_SERVER_GIT_BRANCH=\"${GITHUB_BRANCH}\"")
+target_compile_definitions(sqlite3-server PRIVATE
+        SQLITE_SERVER_GIT_COMMIT_HASH="${GITHUB_COMMIT_HASH}"
+        SQLITE_SERVER_GIT_BRANCH="${GITHUB_BRANCH}")

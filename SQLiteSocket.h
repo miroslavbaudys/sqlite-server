@@ -9,12 +9,12 @@
 #include "Socket.h"
 #include "IRequestHandler.h"
 
-class SQLiteSocket final : public Socket, public std::enable_shared_from_this<SQLiteSocket>
-{
+class SQLiteSocket final : public Socket, public std::enable_shared_from_this<SQLiteSocket> {
     using OutPackets = std::queue<std::unique_ptr<IResponse>>;
 
 public:
-    explicit SQLiteSocket(boost::asio::io_service& service, boost::asio::ip::tcp::socket socket);
+    explicit SQLiteSocket(boost::asio::io_context &service, boost::asio::ip::tcp::socket socket);
+
     ~SQLiteSocket() override;
 
     //MARK: Socket
@@ -22,13 +22,14 @@ public:
 
 private:
     void send_response(std::unique_ptr<IResponse> response);
-    void do_write(const std::unique_ptr<IResponse>& response);
+
+    void do_write(const std::unique_ptr<IResponse> &response);
 
 private:
-    uint32_t							m_packet_size;
-    std::string							m_request;
-    std::unique_ptr<IRequestHandler>	m_handler;
-    OutPackets							m_out_packets;
+    uint32_t m_packet_size;
+    std::string m_request;
+    std::unique_ptr<IRequestHandler> m_handler;
+    OutPackets m_out_packets;
 };
 
 

@@ -5,11 +5,10 @@
 #include <boost/regex.hpp>
 #include <boost/filesystem.hpp>
 #include <boost/algorithm/string/predicate.hpp>
-#include <boost/range/iterator_range.hpp>
-#include <fmt/printf.h>
 #include "Config.h"
 #include "RequestHandler.h"
 #include "Logger.h"
+#include "Response.h"
 
 using json = nlohmann::json;
 
@@ -17,7 +16,8 @@ enum GenericErrorCode {
     INVALID_FORMAT = 0,
     NO_COMMAND_SPECIFIED,
     UNKNOWN_COMMAND,
-    NO_DATABASE_SPECIFIED
+    NO_DATABASE_SPECIFIED,
+    NO_QUERY_SPECIFIED,
 };
 
 std::unique_ptr<IResponse> RequestHandler::handle_request(const std::string &req) {
@@ -26,20 +26,20 @@ std::unique_ptr<IResponse> RequestHandler::handle_request(const std::string &req
         j = parse_request(req);
     } catch (nlohmann::detail::parse_error &e) {
         return std::make_unique<Response>(
-                json{
-                        {"generic_error", INVALID_FORMAT},
-                        {"message",       e.what()},
-                        {"request",       req}
-                }
+            json{
+                {"generic_error", INVALID_FORMAT},
+                {"message", e.what()},
+                {"request", req}
+            }
         );
     }
 
     if (j.find("cmd") == j.end()) {
         return std::make_unique<Response>(
-                json{
-                        {"generic_error", NO_COMMAND_SPECIFIED},
-                        {"request",       req}
-                }
+            json{
+                {"generic_error", NO_COMMAND_SPECIFIED},
+                {"request", req}
+            }
         );
     }
 
@@ -53,34 +53,43 @@ std::unique_ptr<IResponse> RequestHandler::handle_request(const std::string &req
     }
 
     return std::make_unique<Response>(
-            json{
-                    {"generic_error", UNKNOWN_COMMAND},
-                    {"request",       req}
-            }
+        json{
+            {"generic_error", UNKNOWN_COMMAND},
+            {"request", req}
+        }
     );
 }
 
-nlohmann::json RequestHandler::parse_request(const std::string &req) const {
-    json j;
-    try {
-        j = json::parse(req);
-    } catch (const nlohmann::detail::parse_error &) {
-        //fix JSON - there is error in SQLiteStudio {cmd:"LIST"}
-        std::string result;
-        boost::regex e("(['\"])?([a-zA-Z0-9]+)(['\"])?:");
-        boost::regex_replace(std::back_inserter(result), req.begin(), req.end(), e, "\"$2\":");
-        j = json::parse(result);
+nlohmann::json RequestHandler::parse_request(const std::string &req) {
+    auto j = nlohmann::json::parse(req, nullptr, false);
+    if (!j.is_discarded()) {
+        return j;
     }
-    return j;
+
+    //fix JSON - there is error in SQLiteStudio {cmd:"LIST"}
+    static const boost::regex e("(['\"])?([a-zA-Z0-9]+)(['\"])?:");
+    std::string result;
+    result.reserve(req.size() + 16);
+    boost::regex_replace(std::back_inserter(result), req.begin(), req.end(), e, "\"$2\":");
+    return nlohmann::json::parse(result);;
 }
 
 std::unique_ptr<IResponse> RequestHandler::handle_query(const nlohmann::json &j) {
     if (j.find("db") == j.end()) {
         return std::make_unique<Response>(
-                json{
-                        {"generic_error", NO_DATABASE_SPECIFIED},
-                        {"request",       j}
-                }
+            json{
+                {"generic_error", NO_DATABASE_SPECIFIED},
+                {"request", j}
+            }
+        );
+    }
+
+    if (j.find("query") == j.end()) {
+        return std::make_unique<Response>(
+            json{
+                {"generic_error", NO_QUERY_SPECIFIED},
+                {"request", j}
+            }
         );
     }
 
@@ -109,61 +118,60 @@ std::unique_ptr<IResponse> RequestHandler::handle_query(const nlohmann::json &j)
                     case SQLITE_INTEGER: {
                         rowData[name] = statement->value_int64(value);
                     }
-                        break;
+                    break;
                     case SQLITE_FLOAT: {
                         rowData[name] = statement->value_double(value);
                     }
-                        break;
+                    break;
                     case SQLITE3_TEXT: {
-                        rowData[name] = (const char *) statement->value_text(value);
+                        rowData[name] = statement->value_text(value);
                     }
-                        break;
+                    break;
                     case SQLITE_BLOB: {
                         const auto hexStr = [](const char *data, const size_t len) -> std::string {
                             constexpr char hexmap[] = {
-                                    '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c',
-                                    'd', 'e', 'f'
+                                '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c',
+                                'd', 'e', 'f'
                             };
                             std::string s(len * 2, ' ');
-                            for (auto i = 0; i < len; ++i) {
-                                s[2 * i] = hexmap[(data[i] & 0xF0) >> 4];
-                                s[2 * i + 1] = hexmap[data[i] & 0x0F];
+                            for (auto j = 0; j < len; ++j) {
+                                s[2 * j] = hexmap[(data[j] & 0xF0) >> 4];
+                                s[2 * j + 1] = hexmap[data[j] & 0x0F];
                             }
                             return s;
                         };
 
                         const auto blobSize = statement->value_bytes(value);
                         const auto blobValue = statement->value_blob(value);
-                        rowData[name] = "X'" + hexStr(blobValue, (size_t) blobSize) + "'";
+                        rowData[name] = "X'" + hexStr(blobValue, static_cast<size_t>(blobSize)) + "'";
                     }
-                        break;
+                    break;
                     case 0:
                     case SQLITE_NULL: {
                         rowData[name] = nullptr;
                     }
-                        break;
+                    break;
                     default: {
-                        Log.error("Unknown sqlite3 type: {}\n", type);
+                        LogError("Unknown sqlite3 type: {}\n", type);
                     }
-                        break;
+                    break;
                 }
             }
             rowsData.emplace_back(rowData);
         }
         return std::make_unique<Response>(
-                json{
-                        {"columns", columnNames},
-                        {"data",    rowsData}
-                }
+            json{
+                {"columns", columnNames},
+                {"data", rowsData}
+            }
         );
-    }
-    catch (const SQLException &e) {
+    } catch (const SQLException &e) {
         return std::make_unique<Response>(
-                json{
-                        {"error_code",    e.code()},
-                        {"error_message", e.what()},
-                        {"query",         j}
-                }
+            json{
+                {"error_code", e.code()},
+                {"error_message", e.what()},
+                {"query", j}
+            }
         );
     }
 }
@@ -174,7 +182,7 @@ std::unique_ptr<IResponse> RequestHandler::handle_list(const nlohmann::json &j) 
         for (boost::filesystem::directory_iterator itr{Config::instance().databases_folder};
              itr != boost::filesystem::directory_iterator{}; ++itr) {
             if (boost::filesystem::is_regular_file(*itr)) {
-                databases.emplace_back((*itr).path().filename().string());
+                databases.emplace_back(itr->path().filename().string());
             }
         }
     }
@@ -184,10 +192,10 @@ std::unique_ptr<IResponse> RequestHandler::handle_list(const nlohmann::json &j) 
 std::unique_ptr<IResponse> RequestHandler::handle_delete_db(const nlohmann::json &j) {
     if (j.find("db") == j.end()) {
         return std::make_unique<Response>(
-                json{
-                        {"generic_error", NO_DATABASE_SPECIFIED},
-                        {"request",       j}
-                }
+            json{
+                {"generic_error", NO_DATABASE_SPECIFIED},
+                {"request", j}
+            }
         );
     }
 

@@ -3,7 +3,6 @@
 //
 
 #include <nlohmann/json.hpp>
-#include <fmt/core.h>
 #include <fstream>
 #include "Config.h"
 
@@ -13,8 +12,8 @@ boost::asio::ip::tcp::endpoint resolve_endpoint(const std::string &listen_ip, co
     boost::asio::io_context io_service;
     boost::asio::ip::tcp::resolver resolver(io_service);
     const auto endpoint_iterator = resolver.resolve(
-            listen_ip,
-            std::to_string(listen_port)
+        listen_ip,
+        std::to_string(listen_port)
     );
     for (const auto &it: endpoint_iterator) {
         if (it.endpoint().address().is_v4()) {

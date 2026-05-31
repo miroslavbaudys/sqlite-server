@@ -7,7 +7,6 @@
 
 #include <vector>
 #include <nlohmann/json.hpp>
-#include <fmt/format.h>
 #include "IResponse.h"
 
 class Response final : public IResponse {
@@ -17,13 +16,11 @@ public:
     explicit Response(const nlohmann::json &json);
 
     //MARK: IResponse
-    inline const ResponseData &data() const noexcept override {
+    const ResponseData &data() const noexcept override {
         return m_data;
     }
 
-    inline std::string data_repr() const noexcept override {
-        return fmt::format("{}", std::string((const char *) &m_data[4], m_data.size() - 4));
-    }
+    std::string_view data_repr() const noexcept override;
 
 private:
     ResponseData m_data;

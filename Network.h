@@ -12,9 +12,11 @@
 template<class T>
 class NetworkWorker final {
 public:
-    explicit NetworkWorker(boost::asio::ip::tcp::endpoint listen_endpoint, const uint16_t workers = 1) :
-            m_listen_endpoint(std::move(listen_endpoint)),
-            m_workers(workers) {
+    explicit NetworkWorker(
+        boost::asio::ip::tcp::endpoint listen_endpoint,
+        const uint16_t workers = 1
+    ) : m_listen_endpoint(std::move(listen_endpoint)),
+        m_workers(workers) {
     }
 
     void run() {

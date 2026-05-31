@@ -10,16 +10,18 @@
 template<class T>
 class ListenSocket final {
 public:
-    explicit ListenSocket(boost::asio::io_context &service, const boost::asio::ip::tcp::endpoint &listen_endpoint) :
-            m_service(service),
-            m_acceptor(service, listen_endpoint),
-            m_socket(service) {
+    explicit ListenSocket(
+        boost::asio::io_context &service,
+        const boost::asio::ip::tcp::endpoint &listen_endpoint
+    ) : m_service(service),
+        m_acceptor(service, listen_endpoint),
+        m_socket(service) {
         do_accept();
     }
 
 private:
     void do_accept() {
-        m_acceptor.async_accept(m_socket, [this](boost::system::error_code ec) {
+        m_acceptor.async_accept(m_socket, [this](const boost::system::error_code &ec) {
             //Check whether the server was stopped by a signal before this
             //completion handler had a chance to run.
             if (!m_acceptor.is_open()) {

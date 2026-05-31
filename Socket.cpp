@@ -5,9 +5,11 @@
 #include "Socket.h"
 #include "Logger.h"
 
-Socket::Socket(boost::asio::io_context &service, boost::asio::ip::tcp::socket socket) :
-        m_service(service),
-        m_socket(std::move(socket)) {
+Socket::Socket(
+    boost::asio::io_context &service,
+    boost::asio::ip::tcp::socket socket
+) : m_service(service),
+    m_socket(std::move(socket)) {
     LogDebug("Socket create\n");
 }
 

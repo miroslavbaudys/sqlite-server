@@ -1,5 +1,4 @@
 #include <boost/program_options.hpp>
-#include <fmt/core.h>
 #include <fmt/ostream.h>
 #include "Network.h"
 #include "SQLiteSocket.h"
@@ -38,7 +37,7 @@ po::variables_map process_program_options(int argc, const char *argv[]) {
     try {
         po::store(po::command_line_parser(argc, argv).options(description).run(), vm);
     } catch (const po::error &e) {
-        Log.error("{}\n", e.what());
+        LogError("{}\n", e.what());
         exit(EXIT_FAILURE);
     }
     po::notify(vm);
@@ -70,9 +69,9 @@ int main(int argc, const char *argv[]) {
     signal(SIGINT, signal_handler);
 
     //open sqlite socket and run forever
-    auto sqliteSocketWorker = std::make_unique<NetworkWorker<SQLiteSocket>>(
-            Config::instance().listen_endpoint,
-            Config::instance().workers
+    auto sqliteSocketWorker = std::make_unique<NetworkWorker<SQLiteSocket> >(
+        Config::instance().listen_endpoint,
+        Config::instance().workers
     );
     shutdown_handler = [&](int signal) {
         LogDebug("Server shutdown...");

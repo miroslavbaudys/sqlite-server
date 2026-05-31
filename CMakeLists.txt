@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.11)
 include(FetchContent)
 project(sqlite3-server)
 
-set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD 17)
 
 include(CheckIPOSupported)
 check_ipo_supported(RESULT ipo_supported OUTPUT error)

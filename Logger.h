@@ -16,10 +16,13 @@ private:
     Logger() = default;
 
 public:
-    Logger(const Logger&) = delete;
-    Logger& operator=(const Logger&) = delete;
-    Logger(Logger&&) = delete;
-    Logger& operator=(Logger&&) = delete;
+    Logger(const Logger &) = delete;
+
+    Logger &operator=(const Logger &) = delete;
+
+    Logger(Logger &&) = delete;
+
+    Logger &operator=(Logger &&) = delete;
 
     static Logger &instance() {
         static Logger logger;
@@ -45,7 +48,7 @@ public:
     }
 
 private:
-    static inline std::string get_formatted_time() {
+    static std::string get_formatted_time() {
         auto now = std::chrono::system_clock::now();
         return fmt::format("{}", now);
     }

@@ -34,6 +34,7 @@ void SQLiteSocket::do_read() {
             if (!ec) {
                 if (self->m_packet_size > Config::instance().client_max_packet_size) {
                     LogError("Client max allowed packet size reached: {}\n", self->m_packet_size);
+                    self->m_socket.close();
                     return;
                 }
 

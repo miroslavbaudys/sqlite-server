@@ -202,6 +202,9 @@ std::unique_ptr<IResponse> RequestHandler::handle_delete_db(const nlohmann::json
     const std::string database_name = j["db"];
     const auto database_path = Config::instance().databases_folder / database_name;
     const auto result = boost::filesystem::remove(database_path);
+    if (result) {
+        m_databases.erase(database_name);
+    }
     return std::make_unique<Response>(json{{"result", result ? "ok" : "error"}});
 }
 

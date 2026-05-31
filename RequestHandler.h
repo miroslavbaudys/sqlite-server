@@ -25,7 +25,7 @@ private:
 
     static std::unique_ptr<IResponse> handle_list(const nlohmann::json &j);
 
-    static std::unique_ptr<IResponse> handle_delete_db(const nlohmann::json &j);
+    std::unique_ptr<IResponse> handle_delete_db(const nlohmann::json &j);
 
     //database connections
     std::shared_ptr<SQLDatabase> get_database_connection(const std::string &database_name);

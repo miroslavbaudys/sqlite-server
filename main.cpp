@@ -73,7 +73,7 @@ int main(int argc, const char *argv[]) {
         Config::instance().listen_endpoint,
         Config::instance().workers
     );
-    shutdown_handler = [&](int signal) {
+    shutdown_handler = [&](int) {
         LogDebug("Server shutdown...");
         sqliteSocketWorker->shutdown();
     };

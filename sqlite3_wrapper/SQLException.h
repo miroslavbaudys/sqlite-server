@@ -12,9 +12,9 @@ public:
     explicit SQLException(const int code, std::string what) : m_code(code), m_what(std::move(what)) {
     }
 
-    auto code() const noexcept { return m_code; }
+    [[nodiscard]] auto code() const noexcept { return m_code; }
 
-    const char *what() const noexcept override { return m_what.c_str(); }
+    [[nodiscard]] const char *what() const noexcept override { return m_what.c_str(); }
 
 private:
     const int m_code;

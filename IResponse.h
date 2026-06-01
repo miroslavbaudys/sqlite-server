@@ -15,9 +15,9 @@ protected:
 public:
     virtual ~IResponse() = default;
 
-    virtual const ResponseData &data() const noexcept = 0;
+    [[nodiscard]] virtual const ResponseData &data() const noexcept = 0;
 
-    virtual std::string_view data_repr() const noexcept { return {}; };
+    [[nodiscard]] virtual std::string_view data_repr() const noexcept { return {}; };
 };
 
 #endif

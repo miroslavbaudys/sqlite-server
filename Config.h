@@ -15,7 +15,7 @@ public:
     explicit ConfigException(std::string what) : m_what(std::move(what)) {
     }
 
-    const char *what() const noexcept override { return m_what.c_str(); }
+    [[nodiscard]] const char *what() const noexcept override { return m_what.c_str(); }
 
 private:
     const std::string m_what;

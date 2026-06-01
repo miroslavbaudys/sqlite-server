@@ -17,7 +17,7 @@ enum GenericErrorCode {
     NO_COMMAND_SPECIFIED,
     UNKNOWN_COMMAND,
     NO_DATABASE_SPECIFIED,
-    NO_QUERY_SPECIFIED,
+    ERROR_READING_FROM_CLIENT,
 };
 
 std::unique_ptr<IResponse> RequestHandler::handle_request(const std::string &req) {
@@ -87,7 +87,7 @@ std::unique_ptr<IResponse> RequestHandler::handle_query(const nlohmann::json &j)
     if (j.find("query") == j.end()) {
         return std::make_unique<Response>(
             json{
-                {"generic_error", NO_QUERY_SPECIFIED},
+                {"generic_error", ERROR_READING_FROM_CLIENT},
                 {"request", j}
             }
         );
@@ -113,36 +113,35 @@ std::unique_ptr<IResponse> RequestHandler::handle_query(const nlohmann::json &j)
             for (auto i = 0; i < columnCount; ++i) {
                 const auto name = statement->column_name(i);
                 const auto type = statement->column_type(i);
-                const auto value = statement->column_value(i);
                 switch (type) {
                     case SQLITE_INTEGER: {
-                        rowData[name] = statement->value_int64(value);
+                        rowData[name] = statement->value_int64(i);
                     }
                     break;
                     case SQLITE_FLOAT: {
-                        rowData[name] = statement->value_double(value);
+                        rowData[name] = statement->value_double(i);
                     }
                     break;
                     case SQLITE3_TEXT: {
-                        rowData[name] = statement->value_text(value);
+                        rowData[name] = statement->value_text(i);
                     }
                     break;
                     case SQLITE_BLOB: {
                         const auto hexStr = [](const char *data, const size_t len) -> std::string {
-                            constexpr char hexmap[] = {
-                                '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c',
-                                'd', 'e', 'f'
-                            };
                             std::string s(len * 2, ' ');
                             for (auto j = 0; j < len; ++j) {
+                                constexpr char hexmap[] = {
+                                    '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c',
+                                    'd', 'e', 'f'
+                                };
                                 s[2 * j] = hexmap[(data[j] & 0xF0) >> 4];
                                 s[2 * j + 1] = hexmap[data[j] & 0x0F];
                             }
                             return s;
                         };
 
-                        const auto blobSize = statement->value_bytes(value);
-                        const auto blobValue = statement->value_blob(value);
+                        const auto blobSize = statement->value_bytes(i);
+                        const auto blobValue = statement->value_blob(i);
                         rowData[name] = "X'" + hexStr(blobValue, static_cast<size_t>(blobSize)) + "'";
                     }
                     break;

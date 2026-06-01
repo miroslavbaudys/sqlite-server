@@ -26,43 +26,44 @@ public:
         sqlite3_finalize(m_stmt);
     }
 
-    auto next_row() const noexcept {
+    [[nodiscard]] auto next_row() const noexcept {
         return sqlite3_step(m_stmt) == SQLITE_ROW;
     }
 
-    auto column_count() const noexcept {
+    [[nodiscard]] auto column_count() const noexcept {
         return sqlite3_column_count(m_stmt);
     }
 
-    auto column_name(const int index) const noexcept {
+    [[nodiscard]] auto column_name(const int index) const noexcept {
         return sqlite3_column_name(m_stmt, index);
     }
 
-    auto column_type(const int index) const noexcept {
+    [[nodiscard]] auto column_type(const int index) const noexcept {
         return sqlite3_column_type(m_stmt, index);
     }
 
-    auto column_value(const int index) const noexcept {
-        return sqlite3_column_value(m_stmt, index);
-    }
-
-    auto value_int64(sqlite3_value *value) const noexcept {
+    [[nodiscard]] auto value_int64(const int index) const noexcept {
+        const auto value = sqlite3_column_value(m_stmt, index);
         return sqlite3_value_int64(value);
     }
 
-    auto value_double(sqlite3_value *value) const noexcept {
+    [[nodiscard]] auto value_double(const int index) const noexcept {
+        const auto value = sqlite3_column_value(m_stmt, index);
         return sqlite3_value_double(value);
     }
 
-    auto value_text(sqlite3_value *value) const noexcept {
+    [[nodiscard]] auto value_text(const int index) const noexcept {
+        const auto value = sqlite3_column_value(m_stmt, index);
         return reinterpret_cast<const char *>(sqlite3_value_text(value));
     }
 
-    auto value_bytes(sqlite3_value *value) const noexcept {
+    [[nodiscard]] auto value_bytes(const int index) const noexcept {
+        const auto value = sqlite3_column_value(m_stmt, index);
         return sqlite3_value_bytes(value);
     }
 
-    auto value_blob(sqlite3_value *value) const noexcept {
+    [[nodiscard]] auto value_blob(const int index) const noexcept {
+        const auto value = sqlite3_column_value(m_stmt, index);
         return static_cast<const char *>(sqlite3_value_blob(value));
     }
 

@@ -16,11 +16,11 @@ public:
     explicit Response(const nlohmann::json &json);
 
     //MARK: IResponse
-    const ResponseData &data() const noexcept override {
+    [[nodiscard]] const ResponseData &data() const noexcept override {
         return m_data;
     }
 
-    std::string_view data_repr() const noexcept override;
+    [[nodiscard]] std::string_view data_repr() const noexcept override;
 
 private:
     ResponseData m_data;

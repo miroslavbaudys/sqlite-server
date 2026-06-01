@@ -22,7 +22,7 @@ public:
         sqlite3_close(m_db);
     }
 
-    auto prepare(const std::string &query) const {
+    [[nodiscard]] auto prepare(const std::string &query) const {
         return std::make_unique<SQLStatement>(m_db, query);
     }
 

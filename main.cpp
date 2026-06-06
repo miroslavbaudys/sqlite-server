@@ -7,14 +7,6 @@
 
 namespace po = boost::program_options;
 
-namespace {
-    std::function<void(int)> shutdown_handler;
-
-    void signal_handler(int signal) {
-        shutdown_handler(signal);
-    }
-}
-
 template<>
 struct fmt::formatter<po::options_description> : ostream_formatter {
 };
@@ -65,19 +57,12 @@ int main(int argc, const char *argv[]) {
         exit(EXIT_FAILURE);
     }
 
-    //register shutdown signal
-    signal(SIGINT, signal_handler);
-
-    //open sqlite socket and run forever
-    auto sqliteSocketWorker = std::make_unique<NetworkWorker<SQLiteSocket> >(
+    //open sqlite socket and run forever (SIGINT/SIGTERM are handled inside run())
+    NetworkWorker<SQLiteSocket> sqliteSocketWorker(
         Config::instance().listen_endpoint,
         Config::instance().workers
     );
-    shutdown_handler = [&](int) {
-        LogDebug("Server shutdown...");
-        sqliteSocketWorker->shutdown();
-    };
     LogDebug("Server is running... [^C to stop]\n");
-    sqliteSocketWorker->run();
+    sqliteSocketWorker.run();
     return 0;
 }

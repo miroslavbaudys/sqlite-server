@@ -14,7 +14,11 @@ public:
     explicit SQLDatabase(const std::string &path) : m_db(nullptr) {
         const auto rc = sqlite3_open(path.c_str(), &m_db);
         if (rc != SQLITE_OK) {
-            throw SQLException(sqlite3_errcode(m_db), sqlite3_errmsg(m_db));
+            // sqlite3_open allocates the handle even on failure, so it must be released
+            // before we abandon construction (the destructor will not run after a throw).
+            SQLException ex(sqlite3_errcode(m_db), sqlite3_errmsg(m_db));
+            sqlite3_close(m_db);
+            throw ex;
         }
     }
 

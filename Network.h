@@ -5,9 +5,11 @@
 #ifndef SQLITE_SERVER_NETWORK_H
 #define SQLITE_SERVER_NETWORK_H
 
+#include <csignal>
 #include <boost/asio.hpp>
 #include <boost/thread/thread.hpp>
 #include "ListenSocket.h"
+#include "Logger.h"
 
 template<class T>
 class NetworkWorker final {
@@ -21,6 +23,16 @@ public:
 
     void run() {
         ListenSocket<T> listenSocket(m_service, m_listen_endpoint);
+
+        // Handle shutdown signals through the io_context: asio installs an
+        // async-signal-safe handler and delivers the notification here, avoiding the
+        // undefined behaviour of doing real work inside a raw signal handler.
+        boost::asio::signal_set signals(m_service, SIGINT, SIGTERM);
+        signals.async_wait([this](const boost::system::error_code &, int) {
+            LogDebug("Server shutdown...\n");
+            m_service.stop();
+        });
+
         boost::thread_group thread_pool;
         for (auto i = 0; i < m_workers; ++i) {
             thread_pool.create_thread([&]() { m_service.run(); });

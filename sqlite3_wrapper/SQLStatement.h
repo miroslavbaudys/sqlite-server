@@ -19,11 +19,23 @@ public:
         if (rc != SQLITE_OK) {
             throw SQLException(sqlite3_errcode(db), sqlite3_errmsg(db));
         }
+
+        // An empty or comment-only query compiles to no statement: sqlite3_prepare_v2
+        // returns SQLITE_OK but leaves m_stmt == nullptr. Using such a statement would
+        // dereference a null Vdbe (e.g. in sqlite3_column_count / sqlite3_clear_bindings),
+        // so reject it here instead of constructing an unusable object.
+        if (m_stmt == nullptr) {
+            throw SQLException(SQLITE_MISUSE, "empty query");
+        }
     }
 
     ~SQLStatement() {
-        sqlite3_clear_bindings(m_stmt);
-        sqlite3_finalize(m_stmt);
+        // Guard against a null handle defensively; sqlite3_clear_bindings is not null-safe
+        // unless SQLITE_ENABLE_API_ARMOR is defined.
+        if (m_stmt != nullptr) {
+            sqlite3_clear_bindings(m_stmt);
+            sqlite3_finalize(m_stmt);
+        }
     }
 
     [[nodiscard]] auto next_row() const noexcept {

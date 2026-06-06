@@ -20,6 +20,47 @@ enum GenericErrorCode {
     ERROR_READING_FROM_CLIENT,
 };
 
+namespace {
+    // A database name is safe only if it resolves to a location strictly inside the
+    // configured databases folder. We resolve the full path (following symlinks for the
+    // part that already exists, normalising the rest) and confirm it is contained in the
+    // folder. This is robust against separators, absolute paths, "." / ".." traversal and
+    // symlink escapes, regardless of how the name is spelled. weakly_canonical is used
+    // instead of canonical because the database file may not exist yet (it is created on
+    // first query).
+    bool is_safe_database_name(const std::string &name) {
+        namespace fs = boost::filesystem;
+        const fs::path name_path(name);
+        // Reject empty and absolute names outright: an absolute name is never valid, and
+        // how operator/ treats it (append vs. replace) is boost-version dependent.
+        if (name.empty() || name_path.is_absolute()) {
+            return false;
+        }
+        boost::system::error_code ec;
+        const auto base = fs::weakly_canonical(Config::instance().databases_folder, ec);
+        if (ec) {
+            return false;
+        }
+        const auto full = fs::weakly_canonical(base / name_path, ec);
+        if (ec) {
+            return false;
+        }
+        // lexically_relative yields "." when full == base and a path starting with ".."
+        // when full escapes base. Require a single relative component so the name is a
+        // direct child of the folder (the folder is flat; LIST is non-recursive).
+        const auto rel = full.lexically_relative(base);
+        return !rel.empty() && rel != "." && *rel.begin() != ".." && !rel.has_parent_path();
+    }
+
+    // SQLite keeps transient state next to a database in sidecar files (-wal, -shm and
+    // the rollback -journal). These are not databases and must be excluded from LIST.
+    bool is_sqlite_sidecar_file(const std::string &filename) {
+        return boost::algorithm::ends_with(filename, "-wal")
+               || boost::algorithm::ends_with(filename, "-shm")
+               || boost::algorithm::ends_with(filename, "-journal");
+    }
+}
+
 std::unique_ptr<IResponse> RequestHandler::handle_request(const std::string &req) {
     json j;
     try {
@@ -96,6 +137,15 @@ std::unique_ptr<IResponse> RequestHandler::handle_query(const nlohmann::json &j)
     const std::string database_name = j["db"];
     const std::string query = j["query"];
 
+    if (!is_safe_database_name(database_name)) {
+        return std::make_unique<Response>(
+            json{
+                {"generic_error", NO_DATABASE_SPECIFIED},
+                {"request", j}
+            }
+        );
+    }
+
     try {
         const auto database = get_database_connection(database_name);
         const auto statement = database->prepare(query);
@@ -129,7 +179,7 @@ std::unique_ptr<IResponse> RequestHandler::handle_query(const nlohmann::json &j)
                     case SQLITE_BLOB: {
                         const auto hexStr = [](const char *data, const size_t len) -> std::string {
                             std::string s(len * 2, ' ');
-                            for (auto j = 0; j < len; ++j) {
+                            for (size_t j = 0; j < len; ++j) {
                                 constexpr char hexmap[] = {
                                     '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c',
                                     'd', 'e', 'f'
@@ -140,8 +190,10 @@ std::unique_ptr<IResponse> RequestHandler::handle_query(const nlohmann::json &j)
                             return s;
                         };
 
-                        const auto blobSize = statement->value_bytes(i);
+                        // Fetch the blob pointer before its length: a value_bytes() call can
+                        // trigger a type conversion that invalidates the pointer otherwise.
                         const auto blobValue = statement->value_blob(i);
+                        const auto blobSize = statement->value_bytes(i);
                         rowData[name] = "X'" + hexStr(blobValue, static_cast<size_t>(blobSize)) + "'";
                     }
                     break;
@@ -181,7 +233,10 @@ std::unique_ptr<IResponse> RequestHandler::handle_list(const nlohmann::json &j) 
         for (boost::filesystem::directory_iterator itr{Config::instance().databases_folder};
              itr != boost::filesystem::directory_iterator{}; ++itr) {
             if (boost::filesystem::is_regular_file(*itr)) {
-                databases.emplace_back(itr->path().filename().string());
+                auto filename = itr->path().filename().string();
+                if (!is_sqlite_sidecar_file(filename)) {
+                    databases.emplace_back(std::move(filename));
+                }
             }
         }
     }
@@ -199,6 +254,15 @@ std::unique_ptr<IResponse> RequestHandler::handle_delete_db(const nlohmann::json
     }
 
     const std::string database_name = j["db"];
+    if (!is_safe_database_name(database_name)) {
+        return std::make_unique<Response>(
+            json{
+                {"generic_error", NO_DATABASE_SPECIFIED},
+                {"request", j}
+            }
+        );
+    }
+
     const auto database_path = Config::instance().databases_folder / database_name;
     const auto result = boost::filesystem::remove(database_path);
     if (result) {

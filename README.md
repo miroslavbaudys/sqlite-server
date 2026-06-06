@@ -232,7 +232,43 @@ with message `"empty query"`.
 
 ---
 
-## Example client (Python)
+## Python client
+
+### Reference library
+
+A ready-to-use client lives at [`examples/python/sqlite.py`](examples/python/sqlite.py).
+It is a single, dependency-free module (standard library only) that handles framing,
+parameter binding with client-side escaping, and a typed result wrapper. Copy it into your
+project and use it directly:
+
+```python
+from sqlite import Sqlite
+
+# Connects to 127.0.0.1:3333 by default (edit _SQLITE_IP / _SQLITE_PORT to change).
+with Sqlite("mydb") as db:
+    db.send_query("CREATE TABLE IF NOT EXISTS users(id INTEGER, name TEXT)")
+    db.send_query("INSERT INTO users VALUES(?, ?)", [1, "Alice"])   # ? params are escaped
+
+    result = db.query("SELECT id, name FROM users WHERE id = ?", [1])
+    for row in result:
+        print(row.id, row.name)          # rows support both row["id"] and row.id
+
+    n = db.query("SELECT COUNT(*) AS n FROM users").scalar()   # first column of first row -> 1
+```
+
+Highlights of the wrapper:
+
+- **Parameter binding** — `?` and `?N` placeholders are escaped client-side
+  (`SELECT … WHERE id = ?`, `[1]`); `bytes` values become `X'..'` BLOB literals.
+- **`QueryResult`** — iterable/sized/truthy; `.first()`, `.scalar()`, `.column(name)`,
+  `.rows`, `.columns` (true `SELECT` order). Never `None`.
+- **`Row`** — a `dict` subclass with attribute access (`row.name`) and `row.blob("col")`
+  to decode a BLOB column back to `bytes`.
+
+### Minimal raw protocol
+
+If you would rather speak the protocol directly, the framing is just a 4-byte length plus
+JSON:
 
 ```python
 import json, socket, struct
@@ -275,3 +311,4 @@ print(call("127.0.0.1", 3333,
 | `sqlite3_wrapper/` | RAII wrappers: `SQLDatabase`, `SQLStatement`, `SQLException` |
 | `sqlite3/` | Bundled SQLite amalgamation |
 | `Logger.h` | Timestamped console logging (debug logs only in debug builds) |
+| `examples/python/` | Reference Python client (`sqlite.py`) |

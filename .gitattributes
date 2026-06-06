@@ -1,0 +1,3 @@
+# Exclude the bundled SQLite amalgamation from language statistics and diffs;
+# it is third-party code and otherwise dominates the repository's language bar.
+sqlite3/* linguist-vendored

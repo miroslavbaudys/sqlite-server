@@ -312,3 +312,10 @@ print(call("127.0.0.1", 3333,
 | `sqlite3/` | Bundled SQLite amalgamation |
 | `Logger.h` | Timestamped console logging (debug logs only in debug builds) |
 | `examples/python/` | Reference Python client (`sqlite.py`) |
+
+---
+
+## License
+
+Released under the [MIT License](LICENSE). The bundled SQLite amalgamation in `sqlite3/`
+is public domain.

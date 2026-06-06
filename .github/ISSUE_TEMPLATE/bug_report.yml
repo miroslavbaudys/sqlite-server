@@ -1,0 +1,65 @@
+name: Bug report
+description: Report a problem with sqlite-server
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to file a bug report.
+
+        **Do not report security vulnerabilities here.** Please follow
+        [SECURITY.md](https://github.com/miroslavbaudys/sqlite-server/blob/master/SECURITY.md)
+        and report them privately.
+  - type: input
+    id: version
+    attributes:
+      label: Version / commit
+      description: The release tag or commit hash you are running.
+      placeholder: "v1.0.0 (or commit hash)"
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Operating system, compiler, and CMake version.
+      placeholder: |
+        - OS: Ubuntu 24.04
+        - Compiler: clang 18.1
+        - CMake: 3.30
+    validations:
+      required: true
+  - type: textarea
+    id: request
+    attributes:
+      label: Request that triggers the problem
+      description: The JSON request payload, if applicable.
+      render: json
+      placeholder: '{"cmd": "QUERY", "db": "mydb", "query": "SELECT 1 AS one"}'
+    validations:
+      required: false
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: A minimal, reliable sequence that reproduces the issue.
+      placeholder: |
+        1. Start the server with `--databases-folder ...`
+        2. Send the request above
+        3. ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+      description: What happened instead, including any response, crash, or server log output.
+    validations:
+      required: true

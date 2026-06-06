@@ -73,6 +73,73 @@ ignored:
 The databases folder **must already exist** — the server will not create it (individual
 database files inside it are created on demand). Shutdown is graceful on `SIGINT`/`SIGTERM`.
 
+### Running as a service (systemd)
+
+The server runs in the foreground and logs to stdout, and it shuts down cleanly on
+`SIGTERM` (the default signal systemd sends), so it works well as a `Type=simple` service.
+
+**1. Install the binary and create a dedicated user + data directory:**
+
+```sh
+sudo install -m 0755 build/sqlite3-server /usr/local/bin/sqlite3-server
+sudo useradd --system --no-create-home --shell /usr/sbin/nologin sqlite-server
+sudo mkdir -p /var/lib/sqlite-server
+sudo chown sqlite-server:sqlite-server /var/lib/sqlite-server
+```
+
+**2. Create `/etc/systemd/system/sqlite-server.service`:**
+
+```ini
+[Unit]
+Description=sqlite-server (SQLite over TCP/JSON)
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/sqlite3-server --ip 127.0.0.1 --port 3333 --databases-folder /var/lib/sqlite-server
+User=sqlite-server
+Group=sqlite-server
+Restart=on-failure
+RestartSec=2
+
+# Hardening — the protocol has no authentication or TLS, so keep it bound to
+# localhost (or a trusted interface) and lock the process down.
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectControlGroups=true
+ProtectKernelModules=true
+ProtectKernelTunables=true
+RestrictAddressFamilies=AF_INET AF_INET6
+ReadWritePaths=/var/lib/sqlite-server
+
+[Install]
+WantedBy=multi-user.target
+```
+
+**3. Enable and start it:**
+
+```sh
+sudo systemctl daemon-reload
+sudo systemctl enable --now sqlite-server
+```
+
+**4. Check status and follow logs:**
+
+```sh
+systemctl status sqlite-server
+journalctl -u sqlite-server -f
+```
+
+To use a config file instead of flags, point `ExecStart` at
+`... --config /etc/sqlite-server/config.json` and add that path to `ReadOnlyPaths=`.
+
+> **Tip:** on systemd ≥ 235 you can skip the manual `useradd`/`mkdir` by using
+> `DynamicUser=yes` together with `StateDirectory=sqlite-server` (which creates and owns
+> `/var/lib/sqlite-server` for you) and pointing `--databases-folder` at it.
+
 ---
 
 ## Communication protocol

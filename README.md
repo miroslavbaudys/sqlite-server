@@ -9,6 +9,13 @@ receive a JSON response. The protocol is simple enough to talk to from any langu
 - **Concurrency:** a configurable pool of worker threads on a shared Boost.Asio io_context.
 - **Storage:** one SQLite database file per name, kept in a configured folder.
 
+> **A Rust port is available: [sqlite-server-rs](https://github.com/miroslavbaudys/sqlite-server-rs).**
+> The two are drop-in interchangeable — same wire protocol, same [config file](#config-file)
+> format (identical JSON keys), and the same on-disk SQLite database files. You can switch a
+> deployment from this server to the Rust one (or back) with no migration: point either
+> binary at the same databases folder (and the same config) and it just works. Existing
+> databases and clients keep working unchanged.
+
 ---
 
 ## Building

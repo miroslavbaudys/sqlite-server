@@ -32,5 +32,6 @@ the commands you ran, the request payload(s) you sent, and what you observed.
 - [ ] Existing commands (`QUERY`, `LIST`, `DELETE_DB`) still behave as documented.
 - [ ] I manually verified the new behavior and described it above.
 - [ ] Untrusted input handling is preserved (no regression in `db`-name / path-traversal validation).
+- [ ] Access control is preserved (if I touched `--auth` / `--ip-whitelist`, unauthenticated or non-whitelisted clients still never reach command handling).
 - [ ] Commit messages use the imperative mood and a concise subject.
 - [ ] Documentation (README / comments) is updated where relevant.

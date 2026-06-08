@@ -75,6 +75,20 @@ std::unique_ptr<IResponse> RequestHandler::handle_request(const std::string &req
         );
     }
 
+    if (!Config::instance().auth.empty()) {
+        const auto auth_it = j.find("auth");
+        if (auth_it != j.end() && auth_it->is_string()) {
+            if (auth_it->get<std::string>() == Config::instance().auth) {
+                m_authenticated = true;
+                return std::make_unique<Response>(json{{"result", "ok"}});
+            }
+        }
+
+        if (!m_authenticated) {
+            return std::make_unique<Response>(json{{"result", "error"}});
+        }
+    }
+
     if (j.find("cmd") == j.end()) {
         return std::make_unique<Response>(
             json{

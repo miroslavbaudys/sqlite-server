@@ -6,6 +6,8 @@
 #define SQLITE_SERVER_LISTENSOCKET_H
 
 #include <boost/asio.hpp>
+#include "Config.h"
+#include "Logger.h"
 
 template<class T>
 class ListenSocket final {
@@ -29,7 +31,17 @@ private:
             }
 
             if (!ec) {
-                std::make_shared<T>(m_service, std::move(m_socket))->do_read();
+                // Reject clients outside the configured whitelist before building any
+                // per-connection state: close the socket and move on to the next accept.
+                boost::system::error_code addr_ec;
+                const auto remote = m_socket.remote_endpoint(addr_ec);
+                if (!addr_ec && Config::instance().is_ip_allowed(remote.address())) {
+                    std::make_shared<T>(m_service, std::move(m_socket))->do_read();
+                } else {
+                    LogError("Connection rejected, not in ip whitelist: {}\n",
+                             addr_ec ? std::string("unknown") : remote.address().to_string());
+                    m_socket.close(addr_ec);
+                }
             }
 
             do_accept();

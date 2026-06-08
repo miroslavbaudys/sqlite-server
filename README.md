@@ -58,6 +58,8 @@ SQLite is compiled with `SQLITE_THREADSAFE=1` (plus several size/feature trims �
 | `-c, --config <path>` | — | Load settings from a JSON config file (see below) |
 | `--ip <ip>` | `localhost` | Listen address |
 | `-p, --port <port>` | `3333` | Listen port |
+| `-a, --auth <password>` | `""` (disabled) | Require clients to authenticate with this password (see [Authentication](#authentication)) |
+| `--ip-whitelist <list>` | `""` (allow all) | Comma-separated IPs/CIDRs allowed to connect (see [IP whitelist](#ip-whitelist)) |
 | `-d, --databases-folder <dir>` | `sqlite` | Folder holding the database files (must exist) |
 | `-w, --workers <n>` | CPU cores | Number of worker threads |
 | `--client-max-packet-size <bytes>` | `16777216` (16 MiB) | Max request size; larger requests cause the connection to be closed |
@@ -73,12 +75,62 @@ ignored:
   "workers": 4,
   "listen_ip": "127.0.0.1",
   "listen_port": 3333,
-  "databases_folder": "./data"
+  "databases_folder": "./data",
+  "auth": "",
+  "ip_whitelist": ["127.0.0.1", "10.0.0.0/8"]
 }
 ```
 
 The databases folder **must already exist** — the server will not create it (individual
 database files inside it are created on demand). Shutdown is graceful on `SIGINT`/`SIGTERM`.
+
+`auth` and `ip_whitelist` are optional: omit them (or leave `auth` empty / `ip_whitelist`
+empty) to disable each feature. See [Access control](#access-control) below.
+
+### Access control
+
+The server is still intended to run inside a trusted network (there is **no transport
+encryption** — see [`SECURITY.md`](SECURITY.md)), but two optional, independent layers let
+you restrict who can talk to it.
+
+#### Authentication
+
+Set a password with `--auth <password>` (or `"auth"` in the config file). When set, every
+connection must authenticate before any command is processed:
+
+1. As the **first message** on the connection, send `{ "auth": "<password>" }`.
+   - On success the server replies `{ "result": "ok" }` and marks **that connection** as
+     authenticated.
+   - On a wrong/missing password it replies `{ "result": "error" }`.
+2. Any command (`QUERY`, `LIST`, `DELETE_DB`) sent before authenticating is rejected with
+   `{ "result": "error" }`.
+
+Notes:
+
+- Authentication is **per-connection** — each new socket must authenticate again.
+- The auth message is handled on its own; send it first, read the `ok`, then send commands.
+  (A combined `{ "auth": "...", "cmd": "..." }` only performs the authentication.)
+- Leaving `auth` empty disables the check entirely (the default).
+- The password is sent in clear text over the connection, so this only protects against
+  unauthenticated access on a network you already trust — it is **not** a substitute for TLS.
+
+#### IP whitelist
+
+Restrict which peers may connect at all with `--ip-whitelist` (comma-separated) or the
+`"ip_whitelist"` JSON array. Each entry is either a CIDR range or a bare address:
+
+- CIDR, e.g. `10.0.0.0/8`, `192.168.1.0/24`, `2001:db8::/32`.
+- A bare address, e.g. `127.0.0.1` (treated as `/32`) or `::1` (treated as `/128`).
+
+Both IPv4 and IPv6 are supported. A connection from an address that is not in the list is
+**dropped at accept time** — the socket is closed immediately and no request is read.
+An empty list disables the check (all peers allowed). An invalid entry is a fatal config
+error and the server refuses to start.
+
+> This is an application-level allow-list, not a firewall: a rejected client still completes
+> the TCP handshake before the connection is closed, and the peer address is the *direct*
+> connecting address (put no NAT/proxy in front, or whitelist the proxy). For hard network
+> filtering, pair it with a real firewall.
 
 ### Running as a service (systemd)
 
@@ -109,8 +161,8 @@ Group=sqlite-server
 Restart=on-failure
 RestartSec=2
 
-# Hardening — the protocol has no authentication or TLS, so keep it bound to
-# localhost (or a trusted interface) and lock the process down.
+# Hardening — even with the optional password/IP whitelist there is no TLS, so keep
+# it bound to localhost (or a trusted interface) and lock the process down.
 NoNewPrivileges=true
 ProtectSystem=strict
 ProtectHome=true
@@ -171,6 +223,10 @@ A connection is **persistent**: after the server replies it waits for the next r
 the same socket, so you can send many requests over one connection. Requests on a single
 connection are processed sequentially (send a request, read its full response, then send
 the next).
+
+If the server was started with a password, the connection must first authenticate with a
+`{ "auth": "..." }` message before any command is accepted — see
+[Authentication](#authentication).
 
 ### Request format
 
@@ -318,7 +374,8 @@ project and use it directly:
 ```python
 from sqlite import Sqlite
 
-# Connects to 127.0.0.1:3333 by default (edit _SQLITE_IP / _SQLITE_PORT to change).
+# Defaults to 127.0.0.1:3333 with no auth; override per connection:
+#   Sqlite("mydb", ip="10.0.0.5", port=3333, auth="my-password")
 with Sqlite("mydb") as db:
     db.send_query("CREATE TABLE IF NOT EXISTS users(id INTEGER, name TEXT)")
     db.send_query("INSERT INTO users VALUES(?, ?)", [1, "Alice"])   # ? params are escaped
@@ -329,6 +386,10 @@ with Sqlite("mydb") as db:
 
     n = db.query("SELECT COUNT(*) AS n FROM users").scalar()   # first column of first row -> 1
 ```
+
+If the server was started with `--auth`, pass the matching `auth=` (or set the module's
+`_SQLITE_AUTH` default). The client sends the `{ "auth": "..." }` handshake on connect; see
+[Authentication](#authentication).
 
 Highlights of the wrapper:
 
@@ -385,8 +446,10 @@ To connect:
 2. Open the **Android database URL** editor and choose **Connection method → Network (IP address)**.
 3. Enter the server's **IP address** and **Port** — the port you started the server with
    (e.g. `3333`). The plugin defaults to `12121`, so change it to match.
-4. Leave **Remote access password** unchecked — this server has no authentication (keep it on
-   a trusted network).
+4. Leave **Remote access password** unchecked and run the server without `--auth`. This
+   server's [authentication](#authentication) is a simple `{ "auth": "..." }` handshake; it
+   has not been verified to interoperate with the GUI's "Remote access password" field, so
+   keep the server on a trusted network rather than relying on a password here.
 5. Under **Database**, add the database name (a file in the server's databases folder, as
    returned by `LIST`).
 6. Give it a **Name**, optionally tick **Permanent**, click **Test connection**, then **OK**.

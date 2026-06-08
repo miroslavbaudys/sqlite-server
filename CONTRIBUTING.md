@@ -70,6 +70,9 @@ or example so reviewers can verify it.
 - **Untrusted input:** treat the `db` name and `query` as hostile. Preserve the
   existing path-traversal and validation guarantees, and add tests/notes when you
   touch them.
+- **Access control:** if you touch authentication (`--auth`) or the IP whitelist
+  (`--ip-whitelist`), preserve their guarantees — an unauthenticated or non-whitelisted
+  client must never reach command handling — and describe how you verified it in the PR.
 - **Keep diffs focused** — one logical change per pull request. Unrelated
   formatting churn makes review harder.
 - Do not commit build artifacts; `cmake-build-debug/` and `build/` are ignored.

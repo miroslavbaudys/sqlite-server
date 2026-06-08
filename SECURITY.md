@@ -43,13 +43,21 @@ When reporting, please include as much of the following as you can:
 `sqlite-server` is designed to run **within a trusted network boundary**. Please
 keep the following in mind before assessing or deploying it:
 
-- **No authentication or transport encryption.** Any client that can reach the
-  listening socket can run SQL and create or delete database files. Do not expose
-  it directly to untrusted networks or the public internet; place it behind a
-  firewall, private network, or an authenticating/TLS-terminating proxy.
-- **Arbitrary SQL execution is by design.** Clients send SQL that is executed
-  against the target database. Reports about a client being able to run SQL are
-  expected behaviour, not vulnerabilities, unless they cross a boundary the
+- **No transport encryption.** Traffic — including the optional auth password — is
+  sent in clear text. Do not expose the server directly to untrusted networks or the
+  public internet; place it behind a firewall, private network, or a TLS-terminating
+  proxy.
+- **Optional, defence-in-depth access controls.** An optional password (`--auth` /
+  `"auth"`) requires each connection to authenticate before running commands, and an
+  optional IP allow-list (`--ip-whitelist` / `"ip_whitelist"`, CIDR or bare addresses)
+  drops connections from other peers at accept time. Both are off by default. They
+  reduce exposure but, without TLS, do not protect the password on the wire and are
+  **not** a replacement for network-level isolation. The whitelist trusts the direct
+  peer address, so terminate any NAT/proxy accordingly.
+- **Arbitrary SQL execution is by design.** Any client that can reach the socket (and
+  authenticate, if a password is set) sends SQL that is executed against the target
+  database and may create or delete database files. Reports about a client being able to
+  run SQL are expected behaviour, not vulnerabilities, unless they cross a boundary the
   server is meant to enforce.
 - **In scope:** anything that lets a request escape its intended limits — e.g.
   reading, writing, or deleting files **outside** the configured databases

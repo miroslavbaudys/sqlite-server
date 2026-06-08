@@ -32,6 +32,7 @@ private:
 
 private:
     std::map<std::string, std::shared_ptr<SQLDatabase> > m_databases;
+    bool m_authenticated{false};
 };
 
 

@@ -13,6 +13,7 @@ from typing import Optional, Any, List
 # Defaults
 _SQLITE_IP = "127.0.0.1"
 _SQLITE_PORT = 3333
+_SQLITE_AUTH = ""
 
 # The server serialises BLOB columns as a JSON string of the form X'<hex>' (see
 # RequestHandler.cpp). This matches the literal we emit in _serialize_sql_value.
@@ -203,16 +204,32 @@ class Sqlite:
             result = db.query("SELECT * FROM users WHERE id = ?", [1])
     """
 
-    def __init__(self, database: str):
+    def __init__(
+            self,
+            database: str,
+            ip: str = _SQLITE_IP,
+            port: int = _SQLITE_PORT,
+            auth: str = _SQLITE_AUTH,
+    ):
         """
         Initializes the Sqlite client and establishes a TCP connection.
 
+        If ``auth`` is non-empty, the ``{"auth": ...}`` handshake is sent immediately
+        after connecting (required when the server is started with ``--auth``).
+
         :param database: The name or path of the database file on the server.
+        :param ip: Server IP/host to connect to (defaults to ``_SQLITE_IP``).
+        :param port: Server TCP port (defaults to ``_SQLITE_PORT``).
+        :param auth: Authentication password; an empty string skips the handshake
+                     (defaults to ``_SQLITE_AUTH``).
         """
         self._database = database
+        self._auth = auth
         self._sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self._sock.settimeout(120.0)
-        self._sock.connect((_SQLITE_IP, _SQLITE_PORT))
+        self._sock.connect((ip, port))
+        if len(auth) != 0:
+            self._send_auth()
 
     def __enter__(self):
         return self
@@ -261,7 +278,7 @@ class Sqlite:
             # {"error_code", "error_message"} or {"generic_error"}). Surface it instead of
             # silently degrading to an empty result set.
             if isinstance(payload, dict) and (
-                "error_message" in payload or "error_code" in payload or "generic_error" in payload
+                    "error_message" in payload or "error_code" in payload or "generic_error" in payload
             ):
                 print(f"Sqlite.query server error: {payload.get('error_message', payload)}")
 
@@ -341,6 +358,11 @@ class Sqlite:
         # Escape single quotes by doubling them for security
         escaped = str(value).replace("'", "''")
         return f"'{escaped}'"
+
+    def _send_auth(self) -> Optional[str]:
+        payload = {"auth": self._auth}
+        self._send_data(json.dumps(payload))
+        return self._recv_data()
 
     def _send_query(self, query: str) -> Optional[str]:
         """

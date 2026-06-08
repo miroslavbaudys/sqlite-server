@@ -19,6 +19,9 @@ po::variables_map process_program_options(int argc, const char *argv[]) {
             ("config,c", po::value<std::string>(), "Config path")
             ("ip", po::value<std::string>()->default_value("localhost"), "Listen IP")
             ("port,p", po::value<uint16_t>()->default_value(3333), "Listen port")
+            ("auth,a", po::value<std::string>()->default_value(""), "Auth password")
+            ("ip-whitelist", po::value<std::string>()->default_value(""),
+             "Allowed client IPs/CIDRs, comma separated (e.g. 127.0.0.1,10.0.0.0/8)")
             ("databases-folder,d", po::value<std::string>()->default_value("sqlite"), "Databases folder")
             ("workers,w", po::value<uint16_t>()->default_value((uint16_t) boost::thread::hardware_concurrency()),
              "Database workers")

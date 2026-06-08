@@ -446,10 +446,11 @@ To connect:
 2. Open the **Android database URL** editor and choose **Connection method → Network (IP address)**.
 3. Enter the server's **IP address** and **Port** — the port you started the server with
    (e.g. `3333`). The plugin defaults to `12121`, so change it to match.
-4. Leave **Remote access password** unchecked and run the server without `--auth`. This
-   server's [authentication](#authentication) is a simple `{ "auth": "..." }` handshake; it
-   has not been verified to interoperate with the GUI's "Remote access password" field, so
-   keep the server on a trusted network rather than relying on a password here.
+4. **Remote access password:** if you started the server without `--auth`, leave this
+   unchecked. If you set an auth password, tick **Remote access password** and enter the
+   same value — the GUI authenticates using this server's `{ "auth": "..." }` handshake
+   (see [Authentication](#authentication)). Either way there is no TLS, so keep the server
+   on a trusted network.
 5. Under **Database**, add the database name (a file in the server's databases folder, as
    returned by `LIST`).
 6. Give it a **Name**, optionally tick **Permanent**, click **Test connection**, then **OK**.

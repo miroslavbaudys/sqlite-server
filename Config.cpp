@@ -78,6 +78,12 @@ void Config::init(const boost::program_options::variables_map &vm) {
         listen_endpoint = resolve_endpoint(get_config_value(j, "listen_ip"), get_config_value(j, "listen_port"));
         databases_folder = resolve_database_path(get_config_value(j, "databases_folder"));
         auth = j.value("auth", std::string{});
+        if (j.find("busy_timeout_ms") != j.end()) {
+            if (!j["busy_timeout_ms"].is_number_unsigned()) {
+                throw ConfigException("Config key busy_timeout_ms must be a non-negative number");
+            }
+            busy_timeout_ms = j["busy_timeout_ms"].get<uint32_t>();
+        }
         if (j.find("ip_whitelist") != j.end()) {
             const auto &whitelist = j["ip_whitelist"];
             if (!whitelist.is_array()) {
@@ -96,6 +102,7 @@ void Config::init(const boost::program_options::variables_map &vm) {
         listen_endpoint = resolve_endpoint(vm["ip"].as<std::string>(), vm["port"].as<uint16_t>());
         databases_folder = resolve_database_path(vm["databases-folder"].as<std::string>());
         auth = vm["auth"].as<std::string>();
+        busy_timeout_ms = vm["busy-timeout"].as<uint32_t>();
         for (const auto &entry: split_csv(vm["ip-whitelist"].as<std::string>())) {
             add_whitelist_entry(entry);
         }

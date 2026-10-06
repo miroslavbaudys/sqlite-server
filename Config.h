@@ -49,11 +49,14 @@ public:
                << "\tWorkers:                  " << c.workers << std::endl
                << "\tDatabases folder:         " << c.databases_folder << std::endl
                << "\tClient max packet size:   " << c.client_max_packet_size << std::endl
+               << "\tBusy timeout (ms):        " << c.busy_timeout_ms << std::endl
                << "\tAuth:                     " << c.auth << std::endl
                << "\tIP whitelist:             " << c.ip_whitelist_repr() << std::endl;
     }
 
     uint32_t client_max_packet_size{};
+    // per-connection SQLite busy_timeout - same key / default as the Rust port
+    uint32_t busy_timeout_ms{5000};
     uint16_t workers{};
     boost::asio::ip::tcp::endpoint listen_endpoint;
     boost::filesystem::path databases_folder;

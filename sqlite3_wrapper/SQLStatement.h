@@ -38,8 +38,18 @@ public:
         }
     }
 
-    [[nodiscard]] auto next_row() const noexcept {
-        return sqlite3_step(m_stmt) == SQLITE_ROW;
+    // true for a row, false when the statement is done; any other result (SQLITE_BUSY after the
+    // busy timeout, a constraint violation, an I/O error ...) throws - it must not look like success
+    [[nodiscard]] bool next_row() const {
+        const auto rc = sqlite3_step(m_stmt);
+        if (rc == SQLITE_ROW) {
+            return true;
+        }
+        if (rc == SQLITE_DONE) {
+            return false;
+        }
+        const auto db = sqlite3_db_handle(m_stmt);
+        throw SQLException(sqlite3_extended_errcode(db), sqlite3_errmsg(db));
     }
 
     [[nodiscard]] auto column_count() const noexcept {

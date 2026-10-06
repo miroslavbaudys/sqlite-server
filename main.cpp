@@ -26,7 +26,9 @@ po::variables_map process_program_options(int argc, const char *argv[]) {
             ("workers,w", po::value<uint16_t>()->default_value((uint16_t) boost::thread::hardware_concurrency()),
              "Database workers")
             ("client-max-packet-size", po::value<uint32_t>()->default_value(16 * 1024 * 1024),
-             "Max allowed packet size from client");
+             "Max allowed packet size from client")
+            ("busy-timeout", po::value<uint32_t>()->default_value(5000),
+             "Per-connection SQLite busy_timeout in ms (lock wait before SQLITE_BUSY)");
 
     po::variables_map vm;
     try {

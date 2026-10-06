@@ -27,6 +27,7 @@ tool (Ninja or Make).
 ```sh
 cmake -S . -B build           # configure (fetches Boost/json/fmt on first run)
 cmake --build build           # compile -> build/sqlite3-server
+ctest --test-dir build        # tests (see Tests below)
 ```
 
 Bundled/declared dependencies:
@@ -40,6 +41,20 @@ Bundled/declared dependencies:
 
 SQLite is compiled with `SQLITE_THREADSAFE=1` (plus several size/feature trims — see
 `CMakeLists.txt`).
+
+### Tests
+
+```sh
+ctest --test-dir build --output-on-failure
+```
+
+- `sql_wrapper_test` - the sqlite3 wrapper: a failing statement throws, a write waits for another
+  connection's lock (`busy_timeout`), and fails with `SQLITE_BUSY` only after the timeout.
+- `concurrent_writes_test` - starts the built server and checks that no acknowledged insert is lost
+  while another connection deletes in batches, and that a failing statement returns an error
+  (needs Python 3; skipped when CMake finds none).
+
+Turn them off with `-DSQLITE_SERVER_BUILD_TESTS=OFF`.
 
 ---
 
@@ -63,6 +78,7 @@ SQLite is compiled with `SQLITE_THREADSAFE=1` (plus several size/feature trims �
 | `-d, --databases-folder <dir>` | `sqlite` | Folder holding the database files (must exist) |
 | `-w, --workers <n>` | CPU cores | Number of worker threads |
 | `--client-max-packet-size <bytes>` | `16777216` (16 MiB) | Max request size; larger requests cause the connection to be closed |
+| `--busy-timeout <ms>` | `5000` | Per-connection SQLite `busy_timeout`: how long a statement waits for a lock held by another connection before it fails with `SQLITE_BUSY` |
 
 ### Config file
 
@@ -76,6 +92,7 @@ ignored:
   "listen_ip": "127.0.0.1",
   "listen_port": 3333,
   "databases_folder": "./data",
+  "busy_timeout_ms": 5000,
   "auth": "",
   "ip_whitelist": ["127.0.0.1", "10.0.0.0/8"]
 }
@@ -84,8 +101,8 @@ ignored:
 The databases folder **must already exist** — the server will not create it (individual
 database files inside it are created on demand). Shutdown is graceful on `SIGINT`/`SIGTERM`.
 
-`auth` and `ip_whitelist` are optional: omit them (or leave `auth` empty / `ip_whitelist`
-empty) to disable each feature. See [Access control](#access-control) below.
+`busy_timeout_ms` (default `5000`, same key as the Rust port), `auth` and `ip_whitelist` are
+optional: omit `auth` / `ip_whitelist` (or leave them empty) to disable each feature. See [Access control](#access-control) below.
 
 ### Access control
 
@@ -261,7 +278,16 @@ row objects:
 ```
 
 For statements that return no result set (`INSERT`, `UPDATE`, `CREATE`, …) both arrays are
-empty: `{ "columns": [], "data": [] }`.
+empty: `{ "columns": [], "data": [] }`. That response means the statement **ran to completion**:
+a statement that fails while running (constraint violation, `SQLITE_BUSY`, I/O error, …) returns
+an [SQL error](#error-responses) instead.
+
+#### Concurrent writers
+
+Every client connection has its own SQLite connection, so writes from several clients to the
+same database compete for its write lock. A statement that finds the database locked waits up to
+`busy_timeout_ms` (default 5 s) and then fails with `error_code` 5 (`SQLITE_BUSY`). Keep write
+statements short - e.g. delete in batches of a few thousand rows - so other writers never wait long.
 
 #### Value encoding
 
@@ -349,8 +375,8 @@ on first `QUERY`.
 | 3 | `NO_DATABASE_SPECIFIED` | Missing `db`, or `db` is not a safe/valid name |
 | 4 | `ERROR_READING_FROM_CLIENT` | Missing `query` on a `QUERY` request |
 
-**SQL errors** (raised while preparing/running a `QUERY`) carry the SQLite error code,
-its message, and the original request:
+**SQL errors** (raised while preparing or running a `QUERY`) carry the SQLite (extended) error
+code, its message, and the original request:
 
 ```json
 { "error_code": 1, "error_message": "no such table: ghosts",
@@ -358,7 +384,8 @@ its message, and the original request:
 ```
 
 An empty/whitespace/comment-only `query` is reported as `error_code` 21 (`SQLITE_MISUSE`)
-with message `"empty query"`.
+with message `"empty query"`. Errors while running a statement use extended codes, e.g. 1555
+(`SQLITE_CONSTRAINT_PRIMARYKEY`) or 5 (`SQLITE_BUSY`, the lock was held longer than the busy timeout).
 
 ---
 
@@ -476,6 +503,7 @@ To connect:
 | `sqlite3/` | Bundled SQLite amalgamation |
 | `Logger.h` | Timestamped console logging (debug logs only in debug builds) |
 | `examples/python/` | Reference Python client (`sqlite.py`) |
+| `tests/` | `sql_wrapper_test.cpp` (wrapper: statement errors, busy timeout), `test_concurrent_writes.py` (end to end: no lost writes) |
 
 ---
 

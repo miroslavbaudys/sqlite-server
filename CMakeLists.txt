@@ -113,3 +113,25 @@ execute_process(
 target_compile_definitions(sqlite3-server PRIVATE
         SQLITE_SERVER_GIT_COMMIT_HASH="${GITHUB_COMMIT_HASH}"
         SQLITE_SERVER_GIT_BRANCH="${GITHUB_BRANCH}")
+
+# Tests: ctest --test-dir build
+#   sql_wrapper_test        - the sqlite3 wrapper (statement errors, busy_timeout)
+#   concurrent_writes_test  - end to end against the built server (needs Python 3)
+option(SQLITE_SERVER_BUILD_TESTS "Build the tests" ON)
+if (SQLITE_SERVER_BUILD_TESTS)
+    enable_testing()
+
+    add_executable(sql_wrapper_test
+            tests/sql_wrapper_test.cpp
+            sqlite3/sqlite3.c)
+    target_compile_definitions(sql_wrapper_test PRIVATE ${SQLITE_COMPILE_OPTIONS})
+    target_link_libraries(sql_wrapper_test PRIVATE ${CMAKE_DL_LIBS})
+    add_test(NAME sql_wrapper_test COMMAND sql_wrapper_test)
+
+    find_package(Python3 COMPONENTS Interpreter)
+    if (Python3_Interpreter_FOUND)
+        add_test(NAME concurrent_writes_test
+                COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tests/test_concurrent_writes.py
+                $<TARGET_FILE:sqlite3-server>)
+    endif ()
+endif ()

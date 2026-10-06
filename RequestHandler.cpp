@@ -293,7 +293,8 @@ std::shared_ptr<SQLDatabase> RequestHandler::get_database_connection(const std::
     }
 
     const auto database_path = Config::instance().databases_folder / database_name;
-    const auto database = std::make_shared<SQLDatabase>(database_path.string());
+    const auto database = std::make_shared<SQLDatabase>(database_path.string(),
+                                                        static_cast<int>(Config::instance().busy_timeout_ms));
     m_databases.emplace(database_name, database);
     return database;
 }

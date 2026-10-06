@@ -11,7 +11,9 @@
 
 class SQLDatabase final {
 public:
-    explicit SQLDatabase(const std::string &path) : m_db(nullptr) {
+    // busy_timeout_ms: how long a statement waits for a lock held by another connection before it
+    // fails with SQLITE_BUSY. Without it a write that meets another connection's write fails at once.
+    explicit SQLDatabase(const std::string &path, const int busy_timeout_ms = 5000) : m_db(nullptr) {
         const auto rc = sqlite3_open(path.c_str(), &m_db);
         if (rc != SQLITE_OK) {
             // sqlite3_open allocates the handle even on failure, so it must be released
@@ -20,6 +22,7 @@ public:
             sqlite3_close(m_db);
             throw ex;
         }
+        sqlite3_busy_timeout(m_db, busy_timeout_ms);
     }
 
     ~SQLDatabase() {
